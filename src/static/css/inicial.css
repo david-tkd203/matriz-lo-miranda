@@ -1,0 +1,20 @@
+
+:root{
+  --ist-purple:#552789;
+  --ist-fuchsia:#FA35A9;
+  --muted:#8b86a3;
+  --chip-bg:#f7f2ff;
+}
+.ist-navbar{ background: var(--ist-purple); }
+
+.badge-yes{ background: #d1f7c4; color:#1d7a2e; }
+.badge-no{ background: #ffe3e8; color:#b70a3c; }
+.badge-na{ background: #eee; color:#666; }
+
+.card-ficha{ border-left: 5px solid var(--ist-purple); }
+.card-ficha .title{ color: var(--ist-purple); }
+
+.chip{
+  display:inline-block; font-size:.8rem; background:var(--chip-bg);
+  color: var(--ist-purple); border-radius:16px; padding:.25rem .5rem; margin-right:.25rem;
+}

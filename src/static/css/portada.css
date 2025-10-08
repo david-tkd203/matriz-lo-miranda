@@ -1,0 +1,17 @@
+
+:root{
+  --ist-purple:#552789;
+  --ist-fuchsia:#FA35A9;
+  --border:#e8e1f5;
+}
+.ist-navbar{ background: var(--ist-purple); }
+.hero{
+  background: linear-gradient(135deg,#efe7ff 0%,#fff0f7 60%,#ffffff 100%);
+}
+.btn-primary{
+  --bs-btn-bg: var(--ist-purple);
+  --bs-btn-border-color: var(--ist-purple);
+  --bs-btn-hover-bg: #47206f;
+  --bs-btn-hover-border-color:#47206f;
+}
+.text-primary{ color: var(--ist-purple) !important; }
