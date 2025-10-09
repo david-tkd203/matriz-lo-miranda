@@ -8,17 +8,20 @@
       integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <link rel="stylesheet" href="../static/css/inicial.css">
-<!-- SheetJS for reading Excel in the browser -->
+<!-- SheetJS para lectura de Excel en navegador -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body class="bg-light">
 <nav class="navbar navbar-expand-lg navbar-dark ist-navbar sticky-top">
   <div class="container">
     <a class="navbar-brand d-flex align-items-center gap-2" href="portada.html">
-      <img src="../static/img/logo_ist.png" alt="IST" height="36">
+      <img src="/static/img/logo_ist.png" alt="IST" height="36">
       <span class="fw-bold">Matriz VOTME · Inicial</span>
     </a>
     <div class="ms-auto d-flex align-items-center gap-2">
+      <a class="btn btn-outline-light btn-sm" href="cuestionarios_respondidos.html">
+        <i class="bi bi-list-ul"></i> Cuestionarios
+      </a>
       <label class="btn btn-outline-light btn-sm mb-0" for="fileInput">
         <i class="bi bi-file-earmark-spreadsheet"></i> Cargar Excel
       </label>
@@ -30,7 +33,8 @@
 
 <main class="py-4">
   <div class="container">
-    
+
+    <!-- Filtros matriz -->
     <div class="card shadow-sm mb-3 border-0">
       <div class="card-body">
         <div class="row g-3 align-items-end">
@@ -56,19 +60,52 @@
       </div>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <div class="small text-muted">
-        <i class="bi bi-info-circle"></i> Mostrando <span id="countRows">0</span> fichas
-      </div>
-      <div class="d-flex gap-2">
-        <button id="btnReset" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Limpiar</button>
-        <button id="btnReload" class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-repeat"></i> Recargar</button>
-      </div>
-    </div>
+    <!-- Layout dividido: fichas matriz (izquierda) + cuestionarios por área (derecha) -->
+    <div class="row g-3">
+      <!-- IZQUIERDA: Fichas de la matriz -->
+      <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="small text-muted">
+            <i class="bi bi-info-circle"></i> Mostrando <span id="countRows">0</span> fichas
+          </div>
+          <div class="d-flex gap-2">
+            <button id="btnReset" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+            </button>
+            <button id="btnReload" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-arrow-repeat"></i> Recargar
+            </button>
+          </div>
+        </div>
 
-    <div id="cardsWrap" class="row g-3">
-      <!-- Cards render here -->
-    </div>
+        <div id="cardsWrap" class="row g-3">
+          <!-- Cards render here -->
+        </div>
+      </div>
+
+      <!-- DERECHA: Panel de "Cuestionarios por Área" -->
+      <div class="col-lg-4">
+        <div class="card shadow-sm border-0">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <h5 class="mb-0"><i class="bi bi-people"></i> Cuestionarios por Área</h5>
+              <a class="btn btn-sm btn-outline-primary" href="cuestionarios_respondidos.html">
+                <i class="bi bi-list-ul"></i> Ver lista
+              </a>
+            </div>
+            <p class="text-muted small mb-3">
+              Se muestran los cuestionarios respondidos (H+M) por área, según el Excel generado.
+            </p>
+            <div id="areasList">
+              <!-- Se llena vía JS con una list-group -->
+            </div>
+            <div id="areasEmpty" class="alert alert-warning small d-none mt-3">
+              <i class="bi bi-exclamation-triangle"></i> No hay cuestionarios para mostrar.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /row -->
 
   </div>
 </main>
@@ -79,10 +116,18 @@
   </div>
 </footer>
 
+<!-- Rutas de Excels -->
 <script>
   window.DEFAULT_XLSX_PATH = "../source/4. LO MIRANDA MATRIZ VOTME 2024 PLANTA CERDOS.XLSX";
+  window.RESP_XLSX      = "../source/respuestas_cuestionario.xlsx";
 </script>
+
+<!-- JS de la matriz (lo que ya tenías) -->
 <script src="../js/inicial.js"></script>
+
+<!-- JS nuevo: panel de cuestionarios por área -->
+<script src="../js/inicial_cuestionarios.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
