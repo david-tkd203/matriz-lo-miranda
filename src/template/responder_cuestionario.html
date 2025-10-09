@@ -11,15 +11,19 @@
 </head>
 <body class="bg-light">
 
-<nav class="navbar navbar-expand-lg navbar-dark ist-navbar sticky-top">
+<nav class="navbar navbar-expand-lg navbar-dark ist-navbar sticky-top" aria-label="Barra principal">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center gap-2" href="portada.html">
         <img src="../static/img/logo_ist.png" alt="IST" height="36">
         <span class="fw-bold">Responder Cuestionario</span>
         </a>
         <div class="ms-auto d-flex align-items-center gap-2">
-        <a class="btn btn-outline-light btn-sm" href="cuestionarios_respondidos.html"><i class="bi bi-list-ul"></i> Lista</a>
-        <a class="btn btn-outline-light btn-sm" href="inicial.html"><i class="bi bi-table"></i> Matriz</a>
+        <a class="btn btn-outline-light btn-sm" href="cuestionarios_respondidos.html">
+            <i class="bi bi-list-ul"></i> Lista
+        </a>
+        <a class="btn btn-outline-light btn-sm" href="inicial.html">
+            <i class="bi bi-table"></i> Matriz
+        </a>
         </div>
     </div>
 </nav>
@@ -27,99 +31,153 @@
 <main class="py-4">
     <div class="container">
 
-        <div id="loadError" class="alert alert-warning d-none small"></div>
+        <!-- Mensajes de estado -->
+        <div id="loadError" class="alert alert-warning d-none small" role="alert"></div>
 
-        <form id="formNordico" class="card shadow-sm border-0">
-            <div class="card-body">
-                <h5 class="mb-3"><i class="bi bi-person-add"></i> Datos del trabajador/a</h5>
+        <!-- Encabezado del instrumento -->
+        <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <div class="d-flex align-items-center gap-2 mb-2">
+            <i class="bi bi-clipboard2-pulse"></i>
+            <h5 class="mb-0">Cuestionario Nórdico de Percepción de Síntomas Musculoesqueléticos</h5>
+            </div>
+            <p class="text-muted small mb-2">
+            Instrumento estandarizado para detección de síntomas musculoesqueléticos con fines preventivos y de vigilancia.
+            </p>
+            <div class="alert alert-info py-2 small mb-0">
+            <i class="bi bi-info-circle"></i> <strong>Hallazgo positivo:</strong> valoración de dolor <em>mayor a 3</em> en cualquiera de las zonas durante los <strong>últimos 7 días</strong>. 
+            <!-- criterio tomado del anexo del protocolo IST -->
+            </div>
+        </div>
+        </div>
 
-                <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">Fecha</label>
-                    <input id="Fecha" type="date" class="form-control">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Área</label>
-                    <select id="Area" class="form-select" required>
-                    <option value="">Seleccione...</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Puesto de Trabajo</label>
-                    <input id="Puesto_de_Trabajo" class="form-control" placeholder="Ej: Operario/a">
-                </div>
+        <!-- Formulario -->
+        <form id="formNordico" class="card shadow-sm border-0" novalidate>
+        <div class="card-body">
 
-                <div class="col-md-4">
-                    <label class="form-label">Nombre Trabajador</label>
-                    <input id="Nombre_Trabajador" class="form-control" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Sexo</label>
-                    <select id="Sexo" class="form-select" required>
-                    <option value="">Seleccione...</option>
-                    <option>Hombre</option>
-                    <option>Mujer</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Edad</label>
-                    <input id="Edad" type="number" min="15" max="80" class="form-control">
-                </div>
+            <!-- Datos generales -->
+            <h6 class="text-uppercase text-muted fw-semibold mb-3">Datos del trabajador/a</h6>
 
-                <div class="col-md-4">
-                    <label class="form-label">Diestro/Zurdo</label>
-                    <select id="Diestro_Zurdo" class="form-select">
-                    <option>Diestro/a</option>
-                    <option>Zurdo/a</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Temporadas previas</label>
-                    <select id="Temporadas_previas" class="form-select">
-                    <option>NO</option>
-                    <option>SI</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">N° Temporadas</label>
-                    <input id="N_temporadas" type="number" min="0" class="form-control">
-                </div>
+            <div class="row g-3">
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label">Fecha <span class="text-danger">*</span></label>
+                <input id="Fecha" type="date" class="form-control" required>
+                <div class="invalid-feedback">Ingrese la fecha.</div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label">Área <span class="text-danger">*</span></label>
+                <select id="Area" class="form-select" required>
+                <option value="">Seleccione...</option>
+                </select>
+                <div class="invalid-feedback">Seleccione el área.</div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label">Puesto de trabajo</label>
+                <input id="Puesto_de_Trabajo" class="form-control" placeholder="Ej: Operario/a">
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label">Nombre trabajador/a <span class="text-danger">*</span></label>
+                <input id="Nombre_Trabajador" class="form-control" required>
+                <div class="invalid-feedback">Ingrese el nombre.</div>
+            </div>
 
-                <div class="col-md-4">
-                    <label class="form-label">Tiempo en el trabajo (meses)</label>
-                    <input id="Tiempo_en_trabajo_meses" type="number" min="0" class="form-control">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Actividad previa</label>
-                    <input id="Actividad_previa" class="form-control" placeholder="Ej: Construcción">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Otra actividad</label>
-                    <select id="Otra_actividad" class="form-select">
-                    <option>NO</option>
-                    <option>SI</option>
-                    </select>
-                </div>
-                <div class="col-md-12">
-                    <label class="form-label">¿Cuál otra actividad? (si aplica)</label>
-                    <input id="Otra_actividad_cual" class="form-control" placeholder="Detalle">
-                </div>
-                </div>
-
-                <hr class="my-4">
-
-                <h5 class="mb-2"><i class="bi bi-clipboard2-pulse"></i> Zonas (Cuestionario Nórdico)</h5>
-                <p class="text-muted small mb-3">Para cada zona marque si tuvo molestias en <strong>12 meses</strong> y <strong>7 días</strong>. Si corresponde, indique incapacidad y escalas de dolor.</p>
-
-                <div id="zonesWrap" class="zones-grid"></div>
-
-                <div class="d-flex gap-2 mt-4">
-                <button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle"></i> Guardar Respuesta</button>
-                <button class="btn btn-outline-secondary" type="reset"><i class="bi bi-eraser"></i> Limpiar</button>
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label">Sexo <span class="text-danger">*</span></label>
+                <select id="Sexo" class="form-select" required>
+                <option value="">Seleccione...</option>
+                <option>Hombre</option>
+                <option>Mujer</option>
+                </select>
+                <div class="invalid-feedback">Seleccione el sexo.</div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label">Edad</label>
+                <input id="Edad" type="number" min="15" max="80" class="form-control" placeholder="Años">
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label">Diestro/a o Zurdo/a</label>
+                <select id="Diestro_Zurdo" class="form-select">
+                <option>Diestro/a</option>
+                <option>Zurdo/a</option>
+                </select>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label">Tiempo en el trabajo</label>
+                <div class="input-group">
+                <input id="Tiempo_en_trabajo_meses" type="number" min="0" class="form-control" placeholder="Meses">
+                <span class="input-group-text">meses</span>
                 </div>
             </div>
-            </form>
+
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label">¿Temporadas previas?</label>
+                <select id="Temporadas_previas" class="form-select">
+                <option>NO</option>
+                <option>SI</option>
+                </select>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label">N° temporadas</label>
+                <input id="N_temporadas" type="number" min="0" class="form-control">
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label">Actividad previa</label>
+                <input id="Actividad_previa" class="form-control" placeholder="Ej: Construcción">
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label">¿Realiza otra actividad?</label>
+                <select id="Otra_actividad" class="form-select">
+                <option>NO</option>
+                <option>SI</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label">¿Cuál otra actividad? (si aplica)</label>
+                <input id="Otra_actividad_cual" class="form-control" placeholder="Detalle">
+            </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- Bloque de zonas -->
+            <div class="d-flex align-items-center gap-2 mb-2">
+            <i class="bi bi-body-text"></i>
+            <h6 class="text-uppercase text-muted fw-semibold mb-0">Zonas corporales</h6>
+            </div>
+            <p class="text-muted small mb-3">
+            En los últimos <strong>12 meses</strong> y los <strong>últimos 7 días</strong>, indique molestias y escalas de dolor. 
+            “Incapacidad (12 m)” se refiere a impedimento para actividad habitual por esa zona.
+            </p>
+
+            <div class="alert alert-light border small">
+            <div class="fw-semibold mb-1"><i class="bi bi-123"></i> Escala de dolor (referencia)</div>
+            <div class="row g-2">
+                <div class="col-6 col-md-3"><span class="badge text-bg-secondary">1–3</span> leve</div>
+                <div class="col-6 col-md-3"><span class="badge text-bg-secondary">4–6</span> moderado</div>
+                <div class="col-6 col-md-3"><span class="badge text-bg-secondary">7–8</span> intenso</div>
+                <div class="col-6 col-md-3"><span class="badge text-bg-secondary">9–10</span> severo</div>
+            </div>
+            </div>
+
+            <div id="zonesWrap" class="zones-grid" aria-label="Zonas del cuerpo">
+            <!-- Se llena por JS con tarjetas por zona -->
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mt-4">
+            <button class="btn btn-primary" type="submit">
+                <i class="bi bi-check2-circle"></i> Guardar respuesta
+            </button>
+            <button class="btn btn-outline-secondary" type="reset">
+                <i class="bi bi-eraser"></i> Limpiar
+            </button>
+            <a class="btn btn-outline-primary" href="cuestionarios_respondidos.html">
+                <i class="bi bi-list-ul"></i> Ver cuestionarios
+            </a>
+            </div>
         </div>
+        </form>
+
+    </div>
 </main>
 
 <footer class="py-4 border-top bg-white">
@@ -129,7 +187,7 @@
 </footer>
 
 <script>
-  // Rutas
+  // Ruta del Excel (si existe en servidor; si no, se trabaja solo con cache local)
     window.RESP_XLSX = "../source/respuestas_cuestionario.xlsx";
 </script>
 <script src="../js/responder_cuestionario.js"></script>
