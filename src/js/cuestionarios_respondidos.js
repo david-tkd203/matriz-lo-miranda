@@ -303,3 +303,23 @@ function render(){
     </tr>
   `).join("");
 }
+
+// --- Lee cache local si existe (antes de pedir al servidor) ---
+const CACHE_KEY_RESP = "RESPUESTAS_CACHE_V1";
+
+function tryLoadFromCacheFirst(){
+  try{
+    const cache = JSON.parse(localStorage.getItem(CACHE_KEY_RESP) || "null");
+    if(cache && Array.isArray(cache.rows)){
+      ROWS = cache.rows.slice();
+      AREAS = [...new Set(ROWS.map(r => r.Area).filter(Boolean))].sort((a,b)=> a.localeCompare(b));
+      const sel = document.getElementById("filterArea");
+      if(sel) sel.innerHTML = `<option value="">(Todas)</option>` + AREAS.map(a => `<option>${escapeHtml(a)}</option>`).join("");
+      render(); // pinta algo mientras se intenta fetch real
+    }
+  }catch(_){}
+}
+document.addEventListener("DOMContentLoaded", tryLoadFromCacheFirst);
+
+// (opcional) refrescar automáticamente si se guarda algo nuevo en el formulario
+window.addEventListener("cuestionariosCacheUpdated", tryLoadFromCacheFirst);

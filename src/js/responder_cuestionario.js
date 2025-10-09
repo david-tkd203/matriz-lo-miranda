@@ -1,26 +1,29 @@
-// responder_cuestionario.js
-// - Carga Excel existente (si está disponible)
-// - Rellena lista de Áreas desde hoja Parametros (o Respuestas)
-// - Arma el formulario de zonas del Nórdico
-// - Agrega una fila a "Respuestas" y actualiza "Parametros"
-// - Ofrece descarga del Excel actualizado (para que lo subas a src/source/)
+// responder_cuestionario.js (sin descarga; persiste en localStorage para la UI)
 
+// Zonas del Nórdico
 const ZONAS = [
   "Cuello","Hombro Derecho","Hombro Izquierdo","Codo/antebrazo Derecho","Codo/antebrazo Izquierdo",
   "Muñeca/mano Derecha","Muñeca/mano Izquierda","Espalda Alta","Espalda Baja",
   "Caderas/nalgas/muslos","Rodillas (una o ambas)","Pies/tobillos (uno o ambos)"
 ];
 
+// Keys para cache local
+const CACHE_KEY_RESP = "RESPUESTAS_CACHE_V1";
+const CACHE_KEY_PARAMS = "PARAMS_CACHE_V1";
+
 let WORKBOOK = null;
 let SHEET_RESP = "Respuestas";
 let SHEET_PARAMS = "Parametros";
-let HEADERS_RESP = []; // encabezados de "Respuestas"
-let ROWS_RESP = [];    // datos de "Respuestas" como array de objetos
-let PARAMS = [];       // [{Área, Hombres, Mujeres, Total}, ...]
+let HEADERS_RESP = []; // encabezados
+let ROWS_RESP = [];    // respuestas (objetos)
+let PARAMS = [];       // [{Área, Hombres, Mujeres, Total}]
 
 document.addEventListener("DOMContentLoaded", async () => {
   initDateToday("Fecha");
   renderZones();
+  // 1) Intentar cargar cache local primero (si existe)
+  loadFromCache();
+  // 2) Luego intentar cargar Excel del servidor (para hidratar si hay)
   await tryLoadExcel();
   fillAreas();
   wireForm();
@@ -83,59 +86,71 @@ function renderZones(){
 
 function key(z, suf){ return `${z}__${suf}`; }
 
+function loadFromCache(){
+  try{
+    const cacheResp = JSON.parse(localStorage.getItem(CACHE_KEY_RESP) || "null");
+    const cacheParams = JSON.parse(localStorage.getItem(CACHE_KEY_PARAMS) || "null");
+    if(cacheResp && Array.isArray(cacheResp.headers) && Array.isArray(cacheResp.rows)){
+      HEADERS_RESP = cacheResp.headers.slice();
+      ROWS_RESP = cacheResp.rows.slice();
+    }
+    if(cacheParams && Array.isArray(cacheParams)){
+      PARAMS = cacheParams.slice();
+    }
+  }catch(_){}
+}
+
 async function tryLoadExcel(){
   try{
     const url = window.RESP_XLSX || "../source/respuestas_cuestionario.xlsx";
     const res = await fetch(url, { cache: "no-store" });
     if(!res.ok){
-      byId("loadError").classList.remove("d-none");
-      byId("loadError").textContent = "No se pudo cargar el Excel actual; podrás crear uno nuevo al guardar.";
+      // Si no hay Excel en servidor, seguimos sólo con cache local
       WORKBOOK = XLSX.utils.book_new();
       return;
     }
     const buf = await res.arrayBuffer();
     WORKBOOK = XLSX.read(buf, { type: "array" });
 
-    // Hoja Respuestas: si no existe, crear vacía con headers
-    if(!WORKBOOK.Sheets[SHEET_RESP]){
-      const ws = XLSX.utils.aoa_to_sheet([defaultHeaders()]);
-      WORKBOOK.Sheets[SHEET_RESP] = ws;
-      if(!WORKBOOK.SheetNames.includes(SHEET_RESP)) WORKBOOK.SheetNames.push(SHEET_RESP);
+    // Garantizar hojas
+    if(!WORKBOOK.Sheets["Respuestas"]){
+      WORKBOOK.Sheets["Respuestas"] = XLSX.utils.aoa_to_sheet([defaultHeaders()]);
+      if(!WORKBOOK.SheetNames.includes("Respuestas")) WORKBOOK.SheetNames.push("Respuestas");
     }
-    // Hoja Parametros: si no, crear
-    if(!WORKBOOK.Sheets[SHEET_PARAMS]){
-      const ws = XLSX.utils.aoa_to_sheet([["Área","Hombres","Mujeres","Total"]]);
-      WORKBOOK.Sheets[SHEET_PARAMS] = ws;
-      if(!WORKBOOK.SheetNames.includes(SHEET_PARAMS)) WORKBOOK.SheetNames.push(SHEET_PARAMS);
+    if(!WORKBOOK.Sheets["Parametros"]){
+      WORKBOOK.Sheets["Parametros"] = XLSX.utils.aoa_to_sheet([["Área","Hombres","Mujeres","Total"]]);
+      if(!WORKBOOK.SheetNames.includes("Parametros")) WORKBOOK.SheetNames.push("Parametros");
     }
 
-    // Parsear Respuestas
-    const wsResp = WORKBOOK.Sheets[SHEET_RESP];
-    const rows2d = XLSX.utils.sheet_to_json(wsResp, { header:1, defval:"" });
-    if(rows2d.length){
-      HEADERS_RESP = rows2d[0].map(h => String(h||""));
-      const objs = XLSX.utils.sheet_to_json(wsResp, { defval:"" });
-      ROWS_RESP = objs;
-    }else{
-      HEADERS_RESP = defaultHeaders();
-      ROWS_RESP = [];
+    // Parsear Respuestas desde el archivo y fusionar con cache (sin duplicar IDs)
+    const wsResp = WORKBOOK.Sheets["Respuestas"];
+    const fileRows = XLSX.utils.sheet_to_json(wsResp, { defval:"" });
+    const mapId = new Set(ROWS_RESP.map(r => String(r.ID||"")));
+    for(const r of fileRows){
+      const id = String(r.ID||"");
+      if(id && !mapId.has(id)){
+        ROWS_RESP.push(r);
+        mapId.add(id);
+      }
     }
 
-    // Parsear Parametros
-    PARAMS = XLSX.utils.sheet_to_json(WORKBOOK.Sheets[SHEET_PARAMS], { defval:"" });
+    // Headers (si no los teníamos)
+    if(HEADERS_RESP.length === 0){
+      const rows2d = XLSX.utils.sheet_to_json(wsResp, { header:1, defval:"" });
+      HEADERS_RESP = rows2d.length ? rows2d[0].map(h => String(h||"")) : defaultHeaders();
+    }
+
+    // Parametros
+    const wsParams = WORKBOOK.Sheets["Parametros"];
+    const fileParams = XLSX.utils.sheet_to_json(wsParams, { defval:"" });
+    if(fileParams && fileParams.length) PARAMS = fileParams;
+
+    // Persistir a cache (hidrata UI en otras páginas)
+    persistCache();
 
   }catch(e){
-    byId("loadError").classList.remove("d-none");
-    byId("loadError").textContent = "Error al leer Excel: " + (e.message||e);
+    // si falla lectura, seguimos sólo con cache local
     WORKBOOK = XLSX.utils.book_new();
-    // crear hojas vacías
-    WORKBOOK.Sheets[SHEET_RESP] = XLSX.utils.aoa_to_sheet([defaultHeaders()]);
-    WORKBOOK.SheetNames.push(SHEET_RESP);
-    WORKBOOK.Sheets[SHEET_PARAMS] = XLSX.utils.aoa_to_sheet([["Área","Hombres","Mujeres","Total"]]);
-    WORKBOOK.SheetNames.push(SHEET_PARAMS);
-    HEADERS_RESP = defaultHeaders();
-    ROWS_RESP = [];
-    PARAMS = [];
   }
 }
 
@@ -153,13 +168,11 @@ function fillAreas(){
   const sel = byId("Area");
   const setAreas = new Set();
 
-  // Preferimos hoja Parametros si viene
   if(Array.isArray(PARAMS) && PARAMS.length){
     for(const r of PARAMS){
       if(r["Área"]) setAreas.add(String(r["Área"]));
     }
   }
-  // Si no hay, miramos Respuestas existentes
   if(setAreas.size === 0 && Array.isArray(ROWS_RESP)){
     for(const r of ROWS_RESP){
       if(r.Area) setAreas.add(String(r.Area));
@@ -171,35 +184,26 @@ function fillAreas(){
 }
 
 function wireForm(){
-  const f = byId("formNordico");
-  f.addEventListener("submit", onSubmit);
+  byId("formNordico").addEventListener("submit", onSubmit);
 }
 
 function onSubmit(evt){
   evt.preventDefault();
-  // Construir fila nueva
+
   const row = buildRowFromForm();
   if(!row.Area || !row.Nombre_Trabajador || !row.Sexo){
     alert("Área, Nombre y Sexo son obligatorios.");
     return;
   }
 
-  // Asegurar encabezados
   if(HEADERS_RESP.length === 0) HEADERS_RESP = defaultHeaders();
 
-  // Normalizar ID
   const maxId = ROWS_RESP.reduce((m,r) => Math.max(m, parseInt(r.ID || 0,10)||0), 0);
   row.ID = String(maxId + 1);
 
-  // Insertar en memoria
   ROWS_RESP.push(row);
 
-  // Actualizar hoja Respuestas
-  const rows2d = [HEADERS_RESP].concat(ROWS_RESP.map(r => HEADERS_RESP.map(h => r[h] ?? "")));
-  WORKBOOK.Sheets[SHEET_RESP] = XLSX.utils.aoa_to_sheet(rows2d);
-  if(!WORKBOOK.SheetNames.includes(SHEET_RESP)) WORKBOOK.SheetNames.push(SHEET_RESP);
-
-  // Actualizar hoja Parametros (reconstruir a partir de ROWS_RESP)
+  // Recalcular "Parametros" desde ROWS_RESP
   const counts = {};
   for(const r of ROWS_RESP){
     const area = String(r.Area||"").trim();
@@ -209,28 +213,34 @@ function onSubmit(evt){
     if(/^h/i.test(sexo)) counts[area].Hombres += 1;
     else if(/^m/i.test(sexo)) counts[area].Mujeres += 1;
   }
-  const paramsRows = [["Área","Hombres","Mujeres","Total"]];
-  Object.keys(counts).sort((a,b)=> a.localeCompare(b)).forEach(a => {
-    const H = counts[a].Hombres||0, M = counts[a].Mujeres||0;
-    paramsRows.push([a, H, M, H+M]);
-  });
-  WORKBOOK.Sheets[SHEET_PARAMS] = XLSX.utils.aoa_to_sheet(paramsRows);
-  if(!WORKBOOK.SheetNames.includes(SHEET_PARAMS)) WORKBOOK.SheetNames.push(SHEET_PARAMS);
+  PARAMS = Object.keys(counts).sort((a,b)=> a.localeCompare(b)).map(a => ({
+    "Área": a,
+    "Hombres": counts[a].Hombres||0,
+    "Mujeres": counts[a].Mujeres||0,
+    "Total": (counts[a].Hombres||0) + (counts[a].Mujeres||0)
+  }));
 
-  // Descargar workbook
-  const wbout = XLSX.write(WORKBOOK, { bookType: "xlsx", type: "array" });
-  const blob = new Blob([wbout], { type: "application/octet-stream" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "respuestas_cuestionario.xlsx";
-  document.body.appendChild(a);
-  a.click();
-  URL.revokeObjectURL(a.href);
-  a.remove();
+  // Persistir en localStorage para que la lista/detalle lo vean sin recargar del servidor
+  persistCache();
 
-  alert("¡Listo! Se descargó el Excel actualizado. Súbelo a src/source/ para verlo en la lista.");
-  // Opcional: limpiar
-  // byId("formNordico").reset();
+  // Notificar a otras pestañas o scripts que usan la cache
+  window.dispatchEvent(new CustomEvent("cuestionariosCacheUpdated"));
+
+  // Feedback en UI
+  alert(`¡Guardado! Respuesta #${row.ID} agregada en memoria.\nPuedes verla en "Cuestionarios Respondidos".`);
+  // Opcional: redirigir directo a la lista:
+  // location.href = "cuestionarios_respondidos.html?area=" + encodeURIComponent(row.Area);
+}
+
+function persistCache(){
+  try{
+    localStorage.setItem(CACHE_KEY_RESP, JSON.stringify({
+      headers: HEADERS_RESP,
+      rows: ROWS_RESP,
+      ts: Date.now()
+    }));
+    localStorage.setItem(CACHE_KEY_PARAMS, JSON.stringify(PARAMS));
+  }catch(_){}
 }
 
 function buildRowFromForm(){
@@ -251,7 +261,6 @@ function buildRowFromForm(){
     Otra_actividad: byId("Otra_actividad").value,
     Otra_actividad_cual: byId("Otra_actividad_cual").value.trim()
   };
-  // Zonas
   for(const z of ZONAS){
     row[`${z}__12m`] = byId(key(z,"12m")).value;
     row[`${z}__Incap`] = byId(key(z,"Incap")).value;
@@ -270,7 +279,6 @@ function todayDMY(){
   return `${dd}/${mm}/${yyyy}`;
 }
 function fmtDateDMY(val){
-  // recibe yyyy-mm-dd
   const [y,m,d] = String(val).split("-");
   if(!y||!m||!d) return todayDMY();
   return `${d}/${m}/${y}`;
