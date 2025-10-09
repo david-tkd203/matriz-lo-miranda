@@ -17,6 +17,10 @@
         <span class="fw-bold">Cuestionarios Respondidos</span>
         </a>
         <div class="ms-auto d-flex align-items-center gap-2">
+        <!-- Botón nuevo: Responder Cuestionario -->
+        <a class="btn btn-outline-light btn-sm" href="responder_cuestionario.html">
+            <i class="bi bi-plus-circle"></i> Responder cuestionario
+        </a>
         <a class="btn btn-outline-light btn-sm" href="inicial.html"><i class="bi bi-table"></i> Matriz</a>
         </div>
     </div>
@@ -24,6 +28,9 @@
 
 <main class="py-4">
     <div class="container">
+        <!-- Contenedor para mensajes de error que usa el JS robusto -->
+        <div id="loadError" class="d-none"></div>
+
         <div class="card shadow-sm mb-3 border-0">
         <div class="card-body">
             <div class="row g-3 align-items-end">
@@ -65,8 +72,9 @@
     </div>
 </main>
 
+<!-- Define la ruta del Excel para el JS -->
 <script>
-    
+    window.RESP_XLSX = "../source/respuestas_cuestionario.xlsx";
 </script>
 <script src="../js/cuestionarios_respondidos.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

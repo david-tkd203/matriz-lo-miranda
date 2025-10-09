@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Responder Cuestionario Nórdico · IST</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="../static/css/responder_cuestionario.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark ist-navbar sticky-top">
+    <div class="container">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="portada.html">
+        <img src="/static/img/logo_ist.png" alt="IST" height="36">
+        <span class="fw-bold">Responder Cuestionario</span>
+        </a>
+        <div class="ms-auto d-flex align-items-center gap-2">
+        <a class="btn btn-outline-light btn-sm" href="cuestionarios_respondidos.html"><i class="bi bi-list-ul"></i> Lista</a>
+        <a class="btn btn-outline-light btn-sm" href="inicial.html"><i class="bi bi-table"></i> Matriz</a>
+        </div>
+    </div>
+</nav>
+
+<main class="py-4">
+    <div class="container">
+        <div id="loadNotice" class="alert alert-info small">
+            <i class="bi bi-info-circle"></i> Esta página agregará tu respuesta al Excel
+            <code>respuestas_cuestionario.xlsx</code> y te lo permitirá <strong>descargar</strong>.
+            Luego debes <strong>subir/reemplazar</strong> ese archivo en <code>src/source/</code> de tu repositorio para que aparezca en la web.
+        </div>
+
+        <div id="loadError" class="alert alert-warning d-none small"></div>
+
+        <form id="formNordico" class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="mb-3"><i class="bi bi-person-add"></i> Datos del trabajador/a</h5>
+
+                <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Fecha</label>
+                    <input id="Fecha" type="date" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Área</label>
+                    <select id="Area" class="form-select" required>
+                    <option value="">Seleccione...</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Puesto de Trabajo</label>
+                    <input id="Puesto_de_Trabajo" class="form-control" placeholder="Ej: Operario/a">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Nombre Trabajador</label>
+                    <input id="Nombre_Trabajador" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Sexo</label>
+                    <select id="Sexo" class="form-select" required>
+                    <option value="">Seleccione...</option>
+                    <option>Hombre</option>
+                    <option>Mujer</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Edad</label>
+                    <input id="Edad" type="number" min="15" max="80" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Diestro/Zurdo</label>
+                    <select id="Diestro_Zurdo" class="form-select">
+                    <option>Diestro/a</option>
+                    <option>Zurdo/a</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Temporadas previas</label>
+                    <select id="Temporadas_previas" class="form-select">
+                    <option>NO</option>
+                    <option>SI</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">N° Temporadas</label>
+                    <input id="N_temporadas" type="number" min="0" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Tiempo en el trabajo (meses)</label>
+                    <input id="Tiempo_en_trabajo_meses" type="number" min="0" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Actividad previa</label>
+                    <input id="Actividad_previa" class="form-control" placeholder="Ej: Construcción">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Otra actividad</label>
+                    <select id="Otra_actividad" class="form-select">
+                    <option>NO</option>
+                    <option>SI</option>
+                    </select>
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label">¿Cuál otra actividad? (si aplica)</label>
+                    <input id="Otra_actividad_cual" class="form-control" placeholder="Detalle">
+                </div>
+                </div>
+
+                <hr class="my-4">
+
+                <h5 class="mb-2"><i class="bi bi-clipboard2-pulse"></i> Zonas (Cuestionario Nórdico)</h5>
+                <p class="text-muted small mb-3">Para cada zona marque si tuvo molestias en <strong>12 meses</strong> y <strong>7 días</strong>. Si corresponde, indique incapacidad y escalas de dolor.</p>
+
+                <div id="zonesWrap" class="zones-grid"></div>
+
+                <div class="d-flex gap-2 mt-4">
+                <button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle"></i> Guardar y descargar Excel actualizado</button>
+                <button class="btn btn-outline-secondary" type="reset"><i class="bi bi-eraser"></i> Limpiar</button>
+                </div>
+            </div>
+            </form>
+        </div>
+</main>
+
+<footer class="py-4 border-top bg-white">
+    <div class="container text-center text-muted small">
+        <i class="bi bi-shield-check"></i> Instituto de Seguridad del Trabajo · VOTME
+    </div>
+</footer>
+
+<script>
+  // Rutas
+    window.RESP_XLSX = "../source/respuestas_cuestionario.xlsx";
+</script>
+<script src="../js/responder_cuestionario.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
