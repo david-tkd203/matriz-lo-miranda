@@ -1,20 +1,47 @@
-
 :root{
   --ist-purple:#552789;
+  --ist-purple-dk:#3e1a66;   /* más oscuro para navbar */
   --ist-fuchsia:#FA35A9;
   --muted:#8b86a3;
   --chip-bg:#f7f2ff;
 }
-.ist-navbar{ background: var(--ist-purple); }
 
-.badge-yes{ background: #d1f7c4; color:#1d7a2e; }
-.badge-no{ background: #ffe3e8; color:#b70a3c; }
-.badge-na{ background: #eee; color:#666; }
+/* NAVBAR sin pastilla, fondo sólido */
+.ist-navbar{
+  background: var(--ist-purple-dk);
+}
 
-.card-ficha{ border-left: 5px solid var(--ist-purple); }
-.card-ficha .title{ color: var(--ist-purple); }
+.ist-navbar .navbar-brand{
+  display:inline-flex;
+  align-items:center;
+  gap:.5rem;
+  padding:.25rem 0;
+}
+.ist-navbar .navbar-brand img{
+  height:36px;
+  display:block;
+}
 
+.ist-navbar .nav-link{ color:#fff !important; }
+.ist-navbar .nav-link:hover{ color:#f2e9ff !important; }
+
+/* Badges */
+.badge-yes{ background:#d1f7c4; color:#1d7a2e; }
+.badge-no { background:#ffe3e8; color:#b70a3c; }
+.badge-na { background:#eee;    color:#666; }
+
+/* Tarjetas/Chips */
+.card-ficha{ border-left:5px solid var(--ist-purple); }
+.card-ficha .title{ color:var(--ist-purple); }
 .chip{
   display:inline-block; font-size:.8rem; background:var(--chip-bg);
-  color: var(--ist-purple); border-radius:16px; padding:.25rem .5rem; margin-right:.25rem;
+  color:var(--ist-purple); border-radius:16px; padding:.25rem .5rem; margin-right:.25rem;
 }
+
+/* Logo circular opcional */
+.tile-icon.logo-ist{
+  width:3.25rem; height:3.25rem; border-radius:9999px;
+  background:#fff url("/static/img/logo_ist.png") center/80% no-repeat;
+  box-shadow:0 8px 18px rgba(0,0,0,.08);
+}
+.tile-icon.logo-ist i{ display:none; }

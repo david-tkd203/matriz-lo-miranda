@@ -1,17 +1,53 @@
-
 :root{
-  --ist-purple:#552789;
+  --ist-purple:#552789;      /* color corporativo */
+  --ist-purple-dk:#3e1a66;   /* más oscuro para contraste */
   --ist-fuchsia:#FA35A9;
   --border:#e8e1f5;
 }
-.ist-navbar{ background: var(--ist-purple); }
+
+/* NAVBAR sin pastilla ni pseudo-elementos, fondo sólido oscuro */
+.ist-navbar{
+  background: var(--ist-purple-dk);
+}
+
+/* Marca simple: sólo la imagen, sin posicionamientos raros */
+.ist-navbar .navbar-brand{
+  display:inline-flex;
+  align-items:center;
+  gap:.5rem;
+  padding:.25rem 0;
+}
+.ist-navbar .navbar-brand img{
+  height:40px;
+  display:block;
+}
+
+/* Links */
+.ist-navbar .nav-link{ color:#fff !important; }
+.ist-navbar .nav-link:hover{ color:#f2e9ff !important; }
+
+/* Hero */
 .hero{
   background: linear-gradient(135deg,#efe7ff 0%,#fff0f7 60%,#ffffff 100%);
 }
+
+/* Botón primario */
 .btn-primary{
   --bs-btn-bg: var(--ist-purple);
   --bs-btn-border-color: var(--ist-purple);
-  --bs-btn-hover-bg: #47206f;
-  --bs-btn-hover-border-color:#47206f;
+  --bs-btn-hover-bg: var(--ist-purple-dk);
+  --bs-btn-hover-border-color: var(--ist-purple-dk);
 }
+
 .text-primary{ color: var(--ist-purple) !important; }
+
+/* Utilidades (con ruta correcta del logo) */
+.tile-icon.logo-ist{
+  width:3.5rem; height:3.5rem; border-radius:9999px;
+  background:#fff url("/static/img/logo_ist.png") center/78% no-repeat;
+  box-shadow:0 8px 18px rgba(0,0,0,.08);
+}
+.tile-icon.logo-ist i{ display:none; }
+
+.section-divider{ border-top:2px solid var(--border); }
+.card.border-ist{ border-color:var(--border); }
