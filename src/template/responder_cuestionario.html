@@ -26,9 +26,9 @@
         </a>
         </div>
     </div>
-</nav>
+    </nav>
 
-<main class="py-4">
+    <main class="py-4">
     <div class="container">
 
         <!-- Mensajes de estado -->
@@ -45,8 +45,8 @@
             Instrumento estandarizado para detección de síntomas musculoesqueléticos con fines preventivos y de vigilancia.
             </p>
             <div class="alert alert-info py-2 small mb-0">
-            <i class="bi bi-info-circle"></i> <strong>Hallazgo positivo:</strong> valoración de dolor <em>mayor a 3</em> en cualquiera de las zonas durante los <strong>últimos 7 días</strong>. 
-            <!-- criterio tomado del anexo del protocolo IST -->
+            <i class="bi bi-info-circle"></i>
+            <strong>Hallazgo positivo:</strong> dolor <em>&gt; 3</em> en cualquier zona durante los <strong>últimos 7 días</strong>.
             </div>
         </div>
         </div>
@@ -139,28 +139,29 @@
 
             <hr class="my-4">
 
-            <!-- Bloque de zonas -->
+            <!-- Bloque de zonas en filas -->
             <div class="d-flex align-items-center gap-2 mb-2">
             <i class="bi bi-body-text"></i>
             <h6 class="text-uppercase text-muted fw-semibold mb-0">Zonas corporales</h6>
             </div>
             <p class="text-muted small mb-3">
-            En los últimos <strong>12 meses</strong> y los <strong>últimos 7 días</strong>, indique molestias y escalas de dolor. 
-            “Incapacidad (12 m)” se refiere a impedimento para actividad habitual por esa zona.
+            Indique molestias en <strong>12 meses</strong> y <strong>7 días</strong>. Las escalas de dolor son <em>analógicas</em> (0–10).
             </p>
 
-            <div class="alert alert-light border small">
-            <div class="fw-semibold mb-1"><i class="bi bi-123"></i> Escala de dolor (referencia)</div>
-            <div class="row g-2">
-                <div class="col-6 col-md-3"><span class="badge text-bg-secondary">1–3</span> leve</div>
-                <div class="col-6 col-md-3"><span class="badge text-bg-secondary">4–6</span> moderado</div>
-                <div class="col-6 col-md-3"><span class="badge text-bg-secondary">7–8</span> intenso</div>
-                <div class="col-6 col-md-3"><span class="badge text-bg-secondary">9–10</span> severo</div>
-            </div>
-            </div>
-
-            <div id="zonesWrap" class="zones-grid" aria-label="Zonas del cuerpo">
-            <!-- Se llena por JS con tarjetas por zona -->
+            <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle zone-table">
+                <thead class="table-light">
+                <tr>
+                    <th style="min-width:180px">Zona</th>
+                    <th>12 meses</th>
+                    <th>Incap. 12 m</th>
+                    <th style="min-width:210px">Dolor 12 m</th>
+                    <th>7 días</th>
+                    <th style="min-width:210px">Dolor 7 d</th>
+                </tr>
+                </thead>
+                <tbody id="zonesTbody"><!-- FILAS INYECTADAS POR JS --></tbody>
+            </table>
             </div>
 
             <div class="d-flex flex-wrap gap-2 mt-4">

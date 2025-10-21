@@ -2,6 +2,8 @@
     --ist-purple:#552789;
     --ist-purple-dk:#3e1a66;
     --muted:#8b86a3;
+    --range-track:#e8e6f2;     /* fondo del track del slider */
+    --range-fill:#552789;      /* color del tramo “relleno” (lo cambia el JS) */
 }
 
 .ist-navbar{ background: var(--ist-purple-dk); }
@@ -10,34 +12,93 @@
 .ist-navbar .nav-link{ color:#fff !important; }
 .ist-navbar .nav-link:hover{ color:#f2e9ff !important; }
 
-.zones-grid{
-    display:grid;
-    grid-template-columns: 1fr;
-    gap: .75rem 1rem;
-}
-@media (min-width: 768px){
-    .zones-grid{ grid-template-columns: 1fr 1fr; }
-}
-@media (min-width: 1200px){
-    .zones-grid{ grid-template-columns: 1fr 1fr 1fr; }
-}
-
-.zone-card{
-    border:1px solid #e9e7f4;
-    border-radius:.75rem;
-    background:#fff;
-    padding: .75rem .75rem .25rem;
-}
-.zone-card h6{
-    margin:0 0 .5rem 0;
-    font-size:1rem;
-    color:var(--ist-purple);
-}
-.zone-row{
-    display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap:.5rem 1rem;
-}
-.zone-row .form-label{ font-size:.85rem; margin-bottom:.25rem; }
-
 .small, .text-muted{ color:var(--muted) !important; }
+
+/* ===== Tabla de zonas (filas) ===== */
+.zone-table th, .zone-table td{
+    vertical-align: middle;
+    font-size: .95rem;
+}
+.zone-table td:first-child{
+    font-weight: 600;
+    color: var(--ist-purple);
+}
+.zone-table .form-select, .zone-table input[type="range"]{
+    height: calc(1.75rem + 2px);
+    padding: .125rem .5rem;
+    font-size: .9rem;
+}
+.zone-table .slider-wrap{
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: .5rem;
+}
+.zone-table .value-badge{
+    min-width: 2.6rem;
+    text-align: center;
+    border-radius: .5rem;
+    padding: .15rem .45rem;
+    font-weight: 700;
+    background: var(--badge-bg, #f4f2fb);
+    color: var(--badge-fg, var(--ist-purple));
+    border: 1px solid var(--badge-border, #e8e6f2);
+}
+
+/* ===== Slider 0–10 con relleno coloreable ===== */
+input[type="range"]{
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    background: transparent;
+}
+input[type="range"]:focus{ outline: none; }
+
+input[type="range"]::-webkit-slider-runnable-track{
+    height: 6px; border-radius: 6px;
+    background: linear-gradient(90deg,
+        var(--range-fill) 0,
+        var(--range-fill) var(--_val,0%),
+        var(--range-track) var(--_val,0%)
+    );
+}
+input[type="range"]::-moz-range-track{
+    height: 6px; border-radius: 6px; background: var(--range-track);
+}
+input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--range-fill);
+    margin-top: -5px;
+    border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.12);
+}
+input[type="range"]::-moz-range-thumb{
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--range-fill);
+    border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.12);
+}
+input[type="range"][disabled]{ filter: grayscale(.45) opacity(.6); }
+
+.ticks{
+    display:flex; justify-content:space-between; font-size:.75rem; color:var(--muted);
+    margin-top:.15rem;
+}
+
+/* ===== Caritas de escala (emoji buttons) ===== */
+.faces{
+    display:flex; justify-content:space-between; gap:.35rem; margin-top:.25rem; user-select:none;
+}
+.face-btn{
+    display:flex; flex-direction:column; align-items:center; gap:.15rem;
+    background: transparent; border:0; padding:0; cursor:pointer;
+}
+.face-btn[disabled]{ cursor:not-allowed; opacity:.5; pointer-events:none; }
+.face-emoji{
+    width:28px; height:28px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px;
+    color:#000;                 /* que se lean bien los emojis */
+    border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.15);
+}
+.face-label{ font-size:.7rem; color:var(--muted); line-height:1; }
+.face-btn[aria-pressed="true"] .face-emoji{ outline: 2px solid currentColor; }
