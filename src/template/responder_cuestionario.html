@@ -18,44 +18,33 @@
         <span class="fw-bold">Responder Cuestionario</span>
         </a>
         <div class="ms-auto d-flex align-items-center gap-2">
-        <a class="btn btn-outline-light btn-sm" href="cuestionarios_respondidos.html">
-            <i class="bi bi-list-ul"></i> Lista
-        </a>
-        <a class="btn btn-outline-light btn-sm" href="inicial.html">
-            <i class="bi bi-table"></i> Matriz
-        </a>
+        <a class="btn btn-outline-light btn-sm" href="cuestionarios_respondidos.html"><i class="bi bi-list-ul"></i> Lista</a>
+        <a class="btn btn-outline-light btn-sm" href="inicial.html"><i class="bi bi-table"></i> Matriz</a>
         </div>
     </div>
-    </nav>
+</nav>
 
-    <main class="py-4">
+<main class="py-4">
     <div class="container">
 
-        <!-- Mensajes de estado -->
         <div id="loadError" class="alert alert-warning d-none small" role="alert"></div>
 
-        <!-- Encabezado del instrumento -->
         <div class="card border-0 shadow-sm mb-3">
         <div class="card-body">
             <div class="d-flex align-items-center gap-2 mb-2">
             <i class="bi bi-clipboard2-pulse"></i>
             <h5 class="mb-0">Cuestionario Nórdico de Percepción de Síntomas Musculoesqueléticos</h5>
             </div>
-            <p class="text-muted small mb-2">
-            Instrumento estandarizado para detección de síntomas musculoesqueléticos con fines preventivos y de vigilancia.
-            </p>
+            <p class="text-muted small mb-2">Instrumento estandarizado para fines preventivos y de vigilancia.</p>
             <div class="alert alert-info py-2 small mb-0">
-            <i class="bi bi-info-circle"></i>
-            <strong>Hallazgo positivo:</strong> dolor <em>&gt; 3</em> en cualquier zona durante los <strong>últimos 7 días</strong>.
+            <i class="bi bi-info-circle"></i> <strong>Hallazgo positivo:</strong> dolor <em>&gt; 3</em> en <strong>últimos 7 días</strong>.
             </div>
         </div>
         </div>
 
-        <!-- Formulario -->
+        <!-- FORM -->
         <form id="formNordico" class="card shadow-sm border-0" novalidate>
         <div class="card-body">
-
-            <!-- Datos generales -->
             <h6 class="text-uppercase text-muted fw-semibold mb-3">Datos del trabajador/a</h6>
 
             <div class="row g-3">
@@ -139,41 +128,18 @@
 
             <hr class="my-4">
 
-            <!-- Bloque de zonas en filas -->
             <div class="d-flex align-items-center gap-2 mb-2">
             <i class="bi bi-body-text"></i>
             <h6 class="text-uppercase text-muted fw-semibold mb-0">Zonas corporales</h6>
             </div>
-            <p class="text-muted small mb-3">
-            Indique molestias en <strong>12 meses</strong> y <strong>7 días</strong>. Las escalas de dolor son <em>analógicas</em> (0–10).
-            </p>
+            <p class="text-muted small mb-3">Cada sección tiene 3 filas: (1) Zona + 12 meses, (2) Incapacidad 12 m + dolor, (3) Incapacidad 7 d + dolor.</p>
 
-            <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle zone-table">
-                <thead class="table-light">
-                <tr>
-                    <th style="min-width:180px">Zona</th>
-                    <th>12 meses</th>
-                    <th>Incap. 12 m</th>
-                    <th style="min-width:210px">Dolor 12 m</th>
-                    <th>7 días</th>
-                    <th style="min-width:210px">Dolor 7 d</th>
-                </tr>
-                </thead>
-                <tbody id="zonesTbody"><!-- FILAS INYECTADAS POR JS --></tbody>
-            </table>
-            </div>
+            <div id="zonesWrap" class="zones-list"></div>
 
             <div class="d-flex flex-wrap gap-2 mt-4">
-            <button class="btn btn-primary" type="submit">
-                <i class="bi bi-check2-circle"></i> Guardar respuesta
-            </button>
-            <button class="btn btn-outline-secondary" type="reset">
-                <i class="bi bi-eraser"></i> Limpiar
-            </button>
-            <a class="btn btn-outline-primary" href="cuestionarios_respondidos.html">
-                <i class="bi bi-list-ul"></i> Ver cuestionarios
-            </a>
+            <button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle"></i> Guardar respuesta</button>
+            <button class="btn btn-outline-secondary" type="reset"><i class="bi bi-eraser"></i> Limpiar</button>
+            <a class="btn btn-outline-primary" href="cuestionarios_respondidos.html"><i class="bi bi-list-ul"></i> Ver cuestionarios</a>
             </div>
         </div>
         </form>
@@ -188,7 +154,6 @@
 </footer>
 
 <script>
-  // Ruta del Excel (si existe en servidor; si no, se trabaja solo con cache local)
     window.RESP_XLSX = "../source/respuestas_cuestionario.xlsx";
 </script>
 <script src="../js/responder_cuestionario.js"></script>

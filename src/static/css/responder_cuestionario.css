@@ -2,8 +2,8 @@
     --ist-purple:#552789;
     --ist-purple-dk:#3e1a66;
     --muted:#8b86a3;
-    --range-track:#e8e6f2;     /* fondo del track del slider */
-    --range-fill:#552789;      /* color del tramo “relleno” (lo cambia el JS) */
+    --range-track:#e8e6f2;
+    --range-fill:#552789;
 }
 
 .ist-navbar{ background: var(--ist-purple-dk); }
@@ -14,91 +14,83 @@
 
 .small, .text-muted{ color:var(--muted) !important; }
 
-/* ===== Tabla de zonas (filas) ===== */
-.zone-table th, .zone-table td{
-    vertical-align: middle;
-    font-size: .95rem;
+/* ===== Secciones por zona (NO tabla) ===== */
+.zones-list{ display:flex; flex-direction:column; gap:1rem; }
+.zone{
+    border:1px solid #e9e7f4;
+    background:#fff;
+    border-radius:.85rem;
+    overflow:hidden;
+    box-shadow:0 2px 10px rgba(0,0,0,.03);
 }
-.zone-table td:first-child{
-    font-weight: 600;
-    color: var(--ist-purple);
+.zone-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:.75rem 1rem; background:#f8f7fc; border-bottom:1px solid #eeeafc;
 }
-.zone-table .form-select, .zone-table input[type="range"]{
+.zone-title{
+    margin:0; font-size:1rem; font-weight:700; color:var(--ist-purple);
+}
+.zone-body{ padding:.5rem 1rem 1rem; display:flex; flex-direction:column; gap:.65rem; }
+.zone-row{ display:grid; grid-template-columns: 220px 1fr; gap:1rem; align-items:center; }
+.zone-label{ font-weight:600; color:#3c366b; }
+@media (max-width: 576px){
+    .zone-row{ grid-template-columns: 1fr; }
+}
+
+/* Controles cortos */
+.form-select.form-select-sm, .form-control.form-control-sm{
     height: calc(1.75rem + 2px);
     padding: .125rem .5rem;
     font-size: .9rem;
 }
-.zone-table .slider-wrap{
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    gap: .5rem;
+
+/* Slider + burbuja */
+.slider-wrap{
+    display:grid; grid-template-columns: 1fr auto; align-items:center; gap:.5rem;
 }
-.zone-table .value-badge{
-    min-width: 2.6rem;
-    text-align: center;
-    border-radius: .5rem;
-    padding: .15rem .45rem;
-    font-weight: 700;
-    background: var(--badge-bg, #f4f2fb);
-    color: var(--badge-fg, var(--ist-purple));
+.value-badge{
+    min-width: 2.6rem; text-align:center; border-radius:.5rem; padding:.15rem .45rem; font-weight:700;
+    background: var(--badge-bg, #f4f2fb); color: var(--badge-fg, var(--ist-purple));
     border: 1px solid var(--badge-border, #e8e6f2);
 }
 
-/* ===== Slider 0–10 con relleno coloreable ===== */
-input[type="range"]{
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    background: transparent;
-}
-input[type="range"]:focus{ outline: none; }
-
+input[type="range"]{ -webkit-appearance:none; appearance:none; width:100%; background:transparent; }
+input[type="range"]:focus{ outline:none; }
 input[type="range"]::-webkit-slider-runnable-track{
-    height: 6px; border-radius: 6px;
-    background: linear-gradient(90deg,
-        var(--range-fill) 0,
-        var(--range-fill) var(--_val,0%),
-        var(--range-track) var(--_val,0%)
-    );
+    height:6px; border-radius:6px;
+    background:linear-gradient(90deg, var(--range-fill) 0, var(--range-fill) var(--_val,0%), var(--range-track) var(--_val,0%));
 }
-input[type="range"]::-moz-range-track{
-    height: 6px; border-radius: 6px; background: var(--range-track);
-}
+input[type="range"]::-moz-range-track{ height:6px; border-radius:6px; background:var(--range-track); }
 input[type="range"]::-webkit-slider-thumb{
-    -webkit-appearance: none; appearance: none;
-    width: 16px; height: 16px; border-radius: 50%;
-    background: var(--range-fill);
-    margin-top: -5px;
-    border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.12);
+    -webkit-appearance:none; appearance:none; width:16px; height:16px; border-radius:50%;
+    background:var(--range-fill); margin-top:-5px; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.12);
 }
 input[type="range"]::-moz-range-thumb{
-    width: 16px; height: 16px; border-radius: 50%;
-    background: var(--range-fill);
-    border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.12);
+    width:16px; height:16px; border-radius:50%; background:var(--range-fill);
+    border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.12);
 }
-input[type="range"][disabled]{ filter: grayscale(.45) opacity(.6); }
+input[type="range"][disabled]{ filter:grayscale(.45) opacity(.6); }
 
-.ticks{
-    display:flex; justify-content:space-between; font-size:.75rem; color:var(--muted);
-    margin-top:.15rem;
-}
+.ticks{ display:flex; justify-content:space-between; font-size:.75rem; color:var(--muted); margin-top:.15rem; }
 
-/* ===== Caritas de escala (emoji buttons) ===== */
-.faces{
-    display:flex; justify-content:space-between; gap:.35rem; margin-top:.25rem; user-select:none;
-}
-.face-btn{
-    display:flex; flex-direction:column; align-items:center; gap:.15rem;
-    background: transparent; border:0; padding:0; cursor:pointer;
-}
+/* Caritas */
+.faces{ display:flex; justify-content:space-between; gap:.35rem; margin-top:.25rem; user-select:none; flex-wrap:wrap; }
+.face-btn{ display:flex; flex-direction:column; align-items:center; gap:.15rem; background:transparent; border:0; padding:0; cursor:pointer; }
 .face-btn[disabled]{ cursor:not-allowed; opacity:.5; pointer-events:none; }
 .face-emoji{
     width:28px; height:28px; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
-    font-size:16px;
-    color:#000;                 /* que se lean bien los emojis */
-    border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.15);
+    font-size:16px; color:#000; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.15);
 }
 .face-label{ font-size:.7rem; color:var(--muted); line-height:1; }
-.face-btn[aria-pressed="true"] .face-emoji{ outline: 2px solid currentColor; }
+.face-btn[aria-pressed="true"] .face-emoji{ outline:2px solid currentColor; }
+
+/* Ajustes responsive */
+@media (max-width: 992px){
+    .face-emoji{ width:26px; height:26px; font-size:15px; }
+    .value-badge{ min-width:2.2rem; }
+}
+@media (max-width: 576px){
+    .ticks{ display:none; }
+    .faces{ justify-content:center; }
+}
