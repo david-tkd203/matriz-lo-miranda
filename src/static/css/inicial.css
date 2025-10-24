@@ -93,4 +93,34 @@
 
 /* Utilidades */
 .text-muted, .small{ color: var(--muted) !important; }
+/* --- chips y badges extra --- */
+.badge-yes{ background:#d1f7c4; color:#1d7a2e; }
+.badge-no { background:#ffe3e8; color:#b70a3c; }
+.badge-na { background:#eee;    color:#666; }
+
+.badge-vigente{
+  background:#d1f7c4; color:#1d7a2e; border:1px solid #b8ebb0;
+}
+.badge-vencido{
+  background:#ffe3e8; color:#b70a3c; border:1px solid #ffd1da;
+}
+.pill{
+  display:inline-block; font-size:.8rem; background:#f7f2ff;
+  color:#552789; border:1px solid #e8e6f2; border-radius:9999px;
+  padding:.2rem .55rem;
+}
+.pill.warn{
+  background:#fff6e9; color:#8a5300; border-color:#ffd8a8;
+}
+.factor-row{
+  display:flex; justify-content:space-between; align-items:center;
+  gap:1rem; padding:.4rem .25rem; border-bottom:1px dashed #eee;
+}
+
+/* Tarjeta clickable accesible */
+.card-ficha{ border-left:5px solid #552789; cursor:pointer; }
+.card-ficha:focus{ outline:3px solid rgba(85,39,137,.2); }
+
+/* Navbar (ya lo tienes) */
+.ist-navbar{ background:#3e1a66; }
 

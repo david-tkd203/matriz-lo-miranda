@@ -1,263 +1,209 @@
 /* inicial_cuestionarios.js
-   Panel derecho "Cuestionarios por Área"
-   - Lee respuestas desde localStorage (cache) y/o Excel (../source/respuestas_cuestionario.xlsx)
-   - Calcula vigencia por persona (última respuesta): vigente <= 12 meses
-   - Render: acordeón por Área → colapsable por Puesto → lista de Personas con estado
+   Panel derecho: “Cuestionarios por Área” con colapsables por Puesto → Personas
+   - Lee respuestas desde ../source/respuestas_cuestionario.xlsx (hoja "Respuestas") o cache local
+   - Sincroniza con filtros de la matriz (evento 'matrizFiltersChanged' y window.__MATRIZ_FILTERED_PUESTOS)
+   - Muestra estado Vigente/Vencido por persona (por fecha más reciente)
 */
 
-(() => {
-  const AREAS_WRAP_ID = "areasList";
-  const AREAS_EMPTY_ID = "areasEmpty";
-  const CACHE_KEY_RESP = "RESPUESTAS_CACHE_V1";
+const VALID_DAYS = 365; // vigencia de un cuestionario (días)
+let RESP_ROWS = [];     // filas de Respuestas
+let HAS_DATA = false;
 
-  let RESP_ROWS = []; // filas de "Respuestas" (normalizadas)
-  let INDEX = {};     // estructura por áreas
+document.addEventListener("DOMContentLoaded", () => {
+  // Hidratar desde cache local (si existe) para dar feedback rápido
+  tryLoadCache();
+  // Intentar XLSX del servidor
+  tryLoadResponses();
+  // Reaccionar a cambios de filtros de la matriz
+  window.addEventListener('matrizFiltersChanged', () => renderAreasPanel());
+});
 
-  document.addEventListener("DOMContentLoaded", () => {
-    // 1) Pintar algo desde cache si hay
-    tryLoadFromCache();
-    // 2) Intentar hidratar desde Excel (si existe)
-    tryFetchXlsx().finally(() => {
-      buildIndex(); renderAreas();
-    });
-
-    // Si otro tab guarda nuevos formularios, refrescar
-    window.addEventListener("cuestionariosCacheUpdated", () => {
-      tryLoadFromCache();
-      buildIndex(); renderAreas();
-    });
-  });
-
-  /* ======== Carga de datos ======== */
-  function tryLoadFromCache(){
-    try{
-      const cache = JSON.parse(localStorage.getItem(CACHE_KEY_RESP) || "null");
-      if(cache && Array.isArray(cache.rows)) {
-        RESP_ROWS = cache.rows.slice();
-      }
-    }catch(_){}
-  }
-
-  async function tryFetchXlsx(){
-    try{
-      if(!window.RESP_XLSX) return;
-      const url = withBuster(window.RESP_XLSX);
-      const res = await fetch(url, { cache: "no-store" });
-      if(!res.ok) return;
-      const buf = await res.arrayBuffer();
-      if(!buf || buf.byteLength < 64) return;
-
-      const wb = XLSX.read(buf, { type: "array" });
-      const ws = pickRespuestasSheet(wb);
-      if(!ws) return;
-
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
-      // Fusionar evitando duplicados por ID (quedarse con el más reciente si no hay fecha)
-      const map = new Map(RESP_ROWS.map(r => [String(r.ID||""), r]));
-      for(const r of rows){
-        const k = String(r.ID||"");
-        if(!k){ continue; }
-        if(!map.has(k)){
-          map.set(k, r);
-        }
-      }
-      RESP_ROWS = Array.from(map.values());
-    }catch(_){}
-  }
-
-  function pickRespuestasSheet(wb){
-    let ws = wb.Sheets?.["Respuestas"];
-    if(!ws){
-      const goal = norm("Respuestas");
-      for(const name of wb.SheetNames){
-        if(norm(name).includes("respuesta")){ ws = wb.Sheets[name]; break; }
-      }
+function tryLoadCache(){
+  try{
+    const cache = JSON.parse(localStorage.getItem("RESPUESTAS_CACHE_V1") || "null");
+    if(cache && Array.isArray(cache.rows)){
+      RESP_ROWS = cache.rows.slice();
+      HAS_DATA = true;
+      renderAreasPanel();
     }
-    return ws || wb.Sheets?.[wb.SheetNames[0]];
+  }catch(_){}
+}
+
+async function tryLoadResponses(){
+  try{
+    if(!window.RESP_XLSX) return;
+    const res = await fetch(addCacheBuster(window.RESP_XLSX), { cache:"no-store" });
+    if(!res.ok) return;
+    const buf = await res.arrayBuffer();
+    const wb = XLSX.read(buf, { type:"array" });
+    let ws = wb.Sheets["Respuestas"] || wb.Sheets[wb.SheetNames[0]];
+    if(!ws) return;
+    const rows = XLSX.utils.sheet_to_json(ws, { defval:"" });
+    if(Array.isArray(rows) && rows.length){
+      RESP_ROWS = rows;
+      HAS_DATA = true;
+      renderAreasPanel();
+    }
+  }catch(_){}
+}
+
+function addCacheBuster(path){
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}v=${Date.now()}`;
+}
+
+/* ======= Render panel ======= */
+function renderAreasPanel(){
+  const wrap = document.getElementById("areasList");
+  const empty = document.getElementById("areasEmpty");
+  if(!wrap || !empty) return;
+
+  if(!HAS_DATA || !RESP_ROWS.length){
+    wrap.innerHTML = "";
+    empty.classList.remove("d-none");
+    return;
+  }
+  empty.classList.add("d-none");
+
+  // Tomar filtros actuales (expuestos por inicial.js)
+  const filters = window.__MATRIZ_FILTERS || {};
+  const allowed = window.__MATRIZ_FILTERED_PUESTOS || new Set();
+
+  // Filtro por Área (obligatorio si viene)
+  let rows = RESP_ROWS.slice();
+  if(filters.area){
+    rows = rows.filter(r => (r.Area||"").trim() === filters.area);
+  }
+  // Si hay set de puestos permitidos (por factor / tarea), restringir
+  if(allowed.size){
+    rows = rows.filter(r => allowed.has(`${(r.Area||"").trim()}|||${(r.Puesto_de_Trabajo||"").trim()}`));
+  }else{
+    // Si hay filtro de Puesto en la matriz y no hay allowed (por ejemplo sin factor),
+    // aplicar al dataset de respuestas igualmente:
+    if(filters.puesto){
+      rows = rows.filter(r => (r.Puesto_de_Trabajo||"").trim() === filters.puesto);
+    }
   }
 
-  /* ======== Indexación y vigencia ======== */
-  function buildIndex(){
-    INDEX = {};
-    // Agrupar por Área → Puesto → Persona (quedarse con la respuesta más reciente)
-    const lastByPerson = new Map(); // key = area|puesto|nombre → fila más reciente
-    for(const r of RESP_ROWS){
-      const area  = String(r.Area||"").trim();
-      const puesto= String(r.Puesto_de_Trabajo||"").trim();
-      const nombre= String(r.Nombre_Trabajador||"").trim();
-      if(!area || !nombre) continue;
-
-      const key = `${area}||${puesto}||${nombre}`.toLowerCase();
-      const prev = lastByPerson.get(key);
-      if(!prev){ lastByPerson.set(key, r); continue; }
-
-      const d1 = parseDateFlex(prev.Fecha);
-      const d2 = parseDateFlex(r.Fecha);
-      if(d2.getTime() > d1.getTime()) lastByPerson.set(key, r);
+  // Agrupar por Puesto y, dentro, por Persona → seleccionar fecha más reciente
+  const map = new Map(); // puesto -> Map(persona -> {row, status})
+  for(const r of rows){
+    const puesto = String(r.Puesto_de_Trabajo||"").trim() || "(Sin puesto)";
+    const persona = String(r.Nombre_Trabajador||"").trim() || "(Sin nombre)";
+    const current = { date: parseFecha(r.Fecha), raw: r };
+    if(!map.has(puesto)) map.set(puesto, new Map());
+    const pMap = map.get(puesto);
+    if(!pMap.has(persona)){
+      pMap.set(persona, current);
+    }else{
+      // conservar el más reciente
+      const prev = pMap.get(persona);
+      if(current.date && (!prev.date || current.date > prev.date)) pMap.set(persona, current);
     }
-
-    // Construir índice
-    for(const [,row] of lastByPerson){
-      const area  = String(row.Area||"").trim();
-      const puesto= String(row.Puesto_de_Trabajo||"").trim() || "(Sin puesto)";
-      const nombre= String(row.Nombre_Trabajador||"").trim();
-      const sexo  = String(row.Sexo||"").trim();
-      const fecha = String(row.Fecha||"").trim();
-      const fechaD= parseDateFlex(fecha);
-      const vigente = isVigente(fechaD);
-      const id = String(row.ID||"");
-
-      if(!INDEX[area]) INDEX[area] = { puestos: {}, total:0, vigentes:0, vencidos:0 };
-      if(!INDEX[area].puestos[puesto]) INDEX[area].puestos[puesto] = [];
-      INDEX[area].puestos[puesto].push({ id, nombre, sexo, fecha, vigente });
-
-      INDEX[area].total++;
-      if(vigente) INDEX[area].vigentes++; else INDEX[area].vencidos++;
-    }
-
-    // Ordenar personas por nombre dentro de cada puesto
-    Object.values(INDEX).forEach(a => {
-      Object.keys(a.puestos).forEach(p => {
-        a.puestos[p].sort((x,y) => x.nombre.localeCompare(y.nombre));
-      });
-    });
   }
 
-  function isVigente(d){
-    if(!(d instanceof Date) || isNaN(d)) return false;
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    const days = diff / (1000*60*60*24);
-    return days <= 365; // vigente si <= 12 meses
+  if(map.size === 0){
+    wrap.innerHTML = `<div class="alert alert-info small mb-0">No hay cuestionarios que coincidan con los filtros.</div>`;
+    return;
   }
 
-  function parseDateFlex(s){
-    const t = String(s||"").trim();
-    if(!t) return new Date(0);
-    // dd/mm/yyyy
-    if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(t)){
-      const [dd,mm,yy] = t.split("/").map(x=>parseInt(x,10));
-      return new Date(yy, mm-1, dd);
+  // Construir accordion
+  let idx = 0;
+  let html = `<div class="accordion" id="accAreas">`;
+  for(const [puesto, pMap] of map){
+    const id = `accPuesto_${idx++}`;
+    // Contar Vigente/Vencido
+    let vig = 0, ven = 0;
+    const persons = [];
+    for(const [persona, info] of pMap){
+      const { status } = statusFromDate(info.date);
+      if(status === "Vigente") vig++; else ven++;
+      persons.push({ persona, info, status });
     }
-    // yyyy-mm-dd
-    if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(t)){
-      const [yy,mm,dd] = t.split("-").map(x=>parseInt(x,10));
-      return new Date(yy, mm-1, dd);
-    }
-    // Date parse fallback
-    const d = new Date(t);
-    return isNaN(d) ? new Date(0) : d;
-  }
+    persons.sort((a,b)=> a.persona.localeCompare(b.persona));
 
-  function norm(s){
-    return String(s||"").normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'').toLowerCase();
-  }
-
-  /* ======== Render ======== */
-  function renderAreas(){
-    const wrap = document.getElementById(AREAS_WRAP_ID);
-    const empty = document.getElementById(AREAS_EMPTY_ID);
-    if(!wrap) return;
-
-    const areas = Object.keys(INDEX).sort((a,b)=> a.localeCompare(b));
-    if(areas.length === 0){
-      wrap.innerHTML = "";
-      if(empty) empty.classList.remove("d-none");
-      return;
-    }
-    if(empty) empty.classList.add("d-none");
-
-    const accId = "areasAcc";
-    let html = `<div class="accordion" id="${accId}">`;
-    areas.forEach((area, i) => {
-      const a = INDEX[area];
-      const areaId = `area_${i}`;
-      html += `
-        <div class="accordion-item">
-          <h2 class="accordion-header" id="h_${areaId}">
-            <button class="accordion-button collapsed d-flex justify-content-between align-items-center" type="button"
-                    data-bs-toggle="collapse" data-bs-target="#c_${areaId}" aria-expanded="false" aria-controls="c_${areaId}">
-              <span class="me-2">${escapeHtml(area)}</span>
-              <span class="ms-auto d-inline-flex gap-1">
-                <span class="badge text-bg-success" title="Vigentes">${a.vigentes}</span>
-                <span class="badge text-bg-danger"  title="Vencidos">${a.vencidos}</span>
-                <span class="badge text-bg-secondary" title="Total">${a.total}</span>
+    html += `
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="${id}_h">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${id}_c" aria-expanded="false" aria-controls="${id}_c">
+            <div class="w-100 d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-person-vcard"></i> <strong>${escapeHtml(puesto)}</strong></span>
+              <span class="d-flex align-items-center gap-2">
+                <span class="badge badge-vigente">Vigentes: ${vig}</span>
+                <span class="badge badge-vencido">Vencidos: ${ven}</span>
               </span>
-            </button>
-          </h2>
-          <div id="c_${areaId}" class="accordion-collapse collapse" aria-labelledby="h_${areaId}" data-bs-parent="#${accId}">
-            <div class="accordion-body p-2">
-              ${renderPuestos(area, a.puestos)}
             </div>
+          </button>
+        </h2>
+        <div id="${id}_c" class="accordion-collapse collapse" aria-labelledby="${id}_h" data-bs-parent="#accAreas">
+          <div class="accordion-body p-0">
+            <ul class="list-group list-group-flush">
+              ${persons.map(p => {
+                const fstr = formatFecha(infoToFechaString(p.info.raw.Fecha));
+                const sex = (p.info.raw.Sexo||"").toString();
+                return `
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <div>
+                    <div class="fw-semibold">${escapeHtml(p.persona)}</div>
+                    <div class="small text-muted">
+                      ${escapeHtml(sex)} · Último: ${escapeHtml(fstr||"-")}
+                    </div>
+                  </div>
+                  <span class="badge ${p.status === "Vigente" ? "badge-vigente" : "badge-vencido"}">${p.status}</span>
+                </li>`;
+              }).join("")}
+            </ul>
           </div>
-        </div>`;
-    });
-    html += `</div>`;
-    wrap.innerHTML = html;
+        </div>
+      </div>
+    `;
   }
+  html += `</div>`;
+  wrap.innerHTML = html;
+}
 
-  function renderPuestos(area, puestosMap){
-    const puestos = Object.keys(puestosMap).sort((a,b)=> a.localeCompare(b));
-    if(puestos.length === 0) return `<div class="text-muted small">No hay puestos.</div>`;
+/* ======= Fechas / estado ======= */
+function parseFecha(s){
+  if(!s) return null;
+  // soporta dd/mm/yyyy o yyyy-mm-dd
+  const t = String(s).trim();
+  let d = null;
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(t)){
+    const [dd,mm,yy] = t.split('/').map(n=>parseInt(n,10));
+    d = new Date(yy, mm-1, dd);
+  }else if(/^\d{4}-\d{2}-\d{2}$/.test(t)){
+    const [yy,mm,dd] = t.split('-').map(n=>parseInt(n,10));
+    d = new Date(yy, mm-1, dd);
+  }else{
+    const tryDate = new Date(t);
+    if(!isNaN(tryDate.getTime())) d = tryDate;
+  }
+  return (d && !isNaN(d.getTime())) ? d : null;
+}
+function daysDiff(from, to){
+  const MS = 24*60*60*1000;
+  const a = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const b = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+  return Math.round((b-a)/MS);
+}
+function statusFromDate(d){
+  if(!d) return { status:"Vencido", days: null };
+  const diff = daysDiff(d, new Date());
+  return { status: diff <= VALID_DAYS ? "Vigente" : "Vencido", days: diff };
+}
+function infoToFechaString(s){ return String(s||"").trim(); }
+function formatFecha(s){
+  const d = parseFecha(s);
+  if(!d) return "";
+  const dd = String(d.getDate()).padStart(2,"0");
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const yy = d.getFullYear();
+  return `${dd}/${mm}/${yy}`;
+}
 
-    let html = `<div class="list-group list-group-flush">`;
-    puestos.forEach((p, idx) => {
-      const ppl = puestosMap[p];
-      const vig = ppl.filter(x => x.vigente).length;
-      const ven = ppl.length - vig;
-      const pid = `pst_${norm(area)}_${idx}`;
-      html += `
-        <div class="list-group-item px-0">
-          <div class="d-flex align-items-center">
-            <button class="btn btn-sm btn-outline-secondary me-2" type="button" data-bs-toggle="collapse" data-bs-target="#${pid}" aria-expanded="false" aria-controls="${pid}">
-              <i class="bi bi-caret-down"></i>
-            </button>
-            <div class="flex-grow-1">
-              <div class="fw-semibold">${escapeHtml(p)}</div>
-              <div class="small text-muted">Personas: ${ppl.length}
-                · <span class="text-success">Vigentes: ${vig}</span>
-                · <span class="text-danger">Vencidos: ${ven}</span>
-              </div>
-            </div>
-          </div>
-          <div id="${pid}" class="collapse mt-2">
-            ${renderPersonas(ppl)}
-          </div>
-        </div>`;
-    });
-    html += `</div>`;
-    return html;
-  }
-
-  function renderPersonas(list){
-    if(!list || list.length===0) return `<div class="text-muted small ms-5">Sin personas.</div>`;
-    let html = `<ul class="list-group list-group-flush ms-4">`;
-    list.forEach(p => {
-      const badge = p.vigente
-        ? `<span class="badge rounded-pill text-bg-success">Vigente</span>`
-        : `<span class="badge rounded-pill text-bg-danger">Vencido</span>`;
-      html += `
-        <li class="list-group-item px-0 d-flex align-items-center justify-content-between">
-          <div class="me-2">
-            <div class="fw-semibold">${escapeHtml(p.nombre)}</div>
-            <div class="small text-muted">Sexo: ${escapeHtml(p.sexo || "-")} · Fecha: ${escapeHtml(p.fecha || "-")}</div>
-          </div>
-          <a class="btn btn-sm btn-outline-primary" href="cuestionario.html?id=${encodeURIComponent(p.id)}">
-            <i class="bi bi-eye"></i> Ver ${badge}
-          </a>
-        </li>`;
-    });
-    html += `</ul>`;
-    return html;
-  }
-
-  function escapeHtml(str){
-    return String(str ?? "").replace(/[&<>"']/g, s => ({
-      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-    })[s]);
-  }
-  function withBuster(path){
-    const sep = path.includes("?") ? "&" : "?";
-    return `${path}${sep}v=${Date.now()}`;
-  }
-})();
+/* ====== Utils ====== */
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, s => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[s]);
+}

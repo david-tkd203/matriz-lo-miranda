@@ -57,7 +57,7 @@
             </select>
           </div>
 
-          <!-- NUEVO: Filtro por factor -->
+          <!-- Filtro por factor y estado -->
           <div class="col-md-3">
             <label class="form-label fw-semibold"><i class="bi bi-exclamation-octagon"></i> Factor de riesgo</label>
             <select id="filterFactor" class="form-select">
@@ -69,10 +69,10 @@
                 <option value="SI">Solo SI</option>
                 <option value="NO">Solo NO</option>
               </select>
-              <button id="btnReset" class="btn btn-outline-secondary btn-sm">
+              <button id="btnReset" class="btn btn-outline-secondary btn-sm" title="Limpiar filtros">
                 <i class="bi bi-arrow-counterclockwise"></i>
               </button>
-              <button id="btnReload" class="btn btn-outline-primary btn-sm">
+              <button id="btnReload" class="btn btn-outline-primary btn-sm" title="Recargar Excel">
                 <i class="bi bi-arrow-repeat"></i>
               </button>
             </div>
@@ -81,7 +81,7 @@
       </div>
     </div>
 
-    <!-- Layout dividido: fichas matriz (izquierda) + cuestionarios por área (derecha) -->
+    <!-- Layout dividido -->
     <div class="row g-3">
       <!-- IZQUIERDA: Fichas de la matriz -->
       <div class="col-lg-8">
@@ -90,13 +90,10 @@
             <i class="bi bi-info-circle"></i> Mostrando <span id="countRows">0</span> fichas
           </div>
         </div>
-
-        <div id="cardsWrap" class="row g-3">
-          <!-- Cards render here -->
-        </div>
+        <div id="cardsWrap" class="row g-3"></div>
       </div>
 
-      <!-- DERECHA: Panel de "Cuestionarios por Área" -->
+      <!-- DERECHA: Cuestionarios por Área / Puesto / Persona (colapsables) -->
       <div class="col-lg-4">
         <div class="card shadow-sm border-0">
           <div class="card-body">
@@ -106,8 +103,9 @@
                 <i class="bi bi-list-ul"></i> Ver lista
               </a>
             </div>
-            <p class="text-muted small mb-3">
-              Se muestran los cuestionarios respondidos (H+M) por área, según el Excel generado.
+            <p class="text-muted small mb-2">
+              Estado: <span class="badge bg-success-subtle text-success border">Vigente</span>
+              <span class="badge bg-danger-subtle text-danger border">Vencido</span>
             </p>
             <div id="areasList"></div>
             <div id="areasEmpty" class="alert alert-warning small d-none mt-3">
