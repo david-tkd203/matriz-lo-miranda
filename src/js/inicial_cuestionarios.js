@@ -1,183 +1,263 @@
 /* inicial_cuestionarios.js
-   - Lee cuestionarios (Respuestas) desde Excel o cache local
-   - Agrupa por Área y calcula estado: Vigente / Vencido (por fecha)
-   - Pinta panel derecho con badges y última fecha por área
+   Panel derecho "Cuestionarios por Área"
+   - Lee respuestas desde localStorage (cache) y/o Excel (../source/respuestas_cuestionario.xlsx)
+   - Calcula vigencia por persona (última respuesta): vigente <= 12 meses
+   - Render: acordeón por Área → colapsable por Puesto → lista de Personas con estado
 */
 
-const RESP_CACHE_KEY = "RESPUESTAS_CACHE_V1";  // el mismo que usa responder_cuestionario.js
-const VALID_DAYS = 365;                        // vigencia: 12 meses
+(() => {
+  const AREAS_WRAP_ID = "areasList";
+  const AREAS_EMPTY_ID = "areasEmpty";
+  const CACHE_KEY_RESP = "RESPUESTAS_CACHE_V1";
 
-document.addEventListener("DOMContentLoaded", () => {
-  // Hidratar desde cache primero, luego tratar de leer el Excel
-  tryPaintFromCache();
-  hydrateFromExcel();
-  // refrescar automáticamente si se guarda algo nuevo en el formulario
-  window.addEventListener("cuestionariosCacheUpdated", tryPaintFromCache);
-});
+  let RESP_ROWS = []; // filas de "Respuestas" (normalizadas)
+  let INDEX = {};     // estructura por áreas
 
-function byId(id){ return document.getElementById(id); }
+  document.addEventListener("DOMContentLoaded", () => {
+    // 1) Pintar algo desde cache si hay
+    tryLoadFromCache();
+    // 2) Intentar hidratar desde Excel (si existe)
+    tryFetchXlsx().finally(() => {
+      buildIndex(); renderAreas();
+    });
 
-/* -------- Lecturas -------- */
-function tryPaintFromCache(){
-  try{
-    const cache = JSON.parse(localStorage.getItem(RESP_CACHE_KEY) || "null");
-    if(!cache || !Array.isArray(cache.rows)) return;
-    paintAreasPanel(cache.rows);
-  }catch(_){}
-}
-
-async function hydrateFromExcel(){
-  try{
-    const paths = [];
-    if(window.RESP_XLSX) paths.push(window.RESP_XLSX);
-    paths.push("../source/respuestas_cuestionario.xlsx","/source/respuestas_cuestionario.xlsx","./respuestas_cuestionario.xlsx");
-
-    let rows = null, lastErr=null;
-    for(const p of paths){
-      try{
-        const u = addBuster(p);
-        const res = await fetch(u, { cache:"no-store" });
-        if(!res.ok){ lastErr = `HTTP ${res.status}`; continue; }
-        const buf = await res.arrayBuffer();
-        if(!buf || buf.byteLength < 50){ lastErr = "archivo vacío/pequeño"; continue; }
-        rows = parseRespuestas(buf);
-        break;
-      }catch(e){ lastErr = e.message || String(e); }
-    }
-    if(!rows){ /* sin Excel, ya pintamos desde cache si existía */ return; }
-    paintAreasPanel(rows);
-  }catch(_){}
-}
-
-function addBuster(p){ return `${p}${p.includes("?")?"&":"?"}v=${Date.now()}`; }
-
-function parseRespuestas(arrayBuffer){
-  const wb = XLSX.read(arrayBuffer, { type:"array" });
-  let ws = wb.Sheets["Respuestas"];
-  if(!ws){
-    const goal = norm("Respuestas");
-    for(const n of wb.SheetNames){
-      if(norm(n).includes("respuesta")){ ws = wb.Sheets[n]; break; }
-    }
-  }
-  ws = ws || wb.Sheets[wb.SheetNames[0]];
-  if(!ws) return [];
-  return XLSX.utils.sheet_to_json(ws, { defval:"" });
-}
-
-function norm(s){
-  return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"").toLowerCase();
-}
-
-/* -------- Lógica de vigencia -------- */
-function parseFechaDMY(s){
-  // soporta dd/mm/yyyy, yyyy-mm-dd, dd-mm-yyyy
-  const str = String(s||"").trim();
-  if(!str) return null;
-  let d=null;
-  if(/^\d{2}\/\d{2}\/\d{4}$/.test(str)){ // dd/mm/yyyy
-    const [dd,mm,yy] = str.split("/").map(n=>parseInt(n,10));
-    d = new Date(yy, mm-1, dd);
-  }else if(/^\d{4}-\d{2}-\d{2}$/.test(str)){ // yyyy-mm-dd
-    const [yy,mm,dd] = str.split("-").map(n=>parseInt(n,10));
-    d = new Date(yy, mm-1, dd);
-  }else if(/^\d{2}-\d{2}-\d{4}$/.test(str)){ // dd-mm-yyyy
-    const [dd,mm,yy] = str.split("-").map(n=>parseInt(n,10));
-    d = new Date(yy, mm-1, dd);
-  }
-  return Number.isFinite(d?.getTime()) ? d : null;
-}
-function daysDiff(a,b){ return Math.floor((a - b) / (1000*60*60*24)); }
-function statusFromDate(d){
-  if(!d) return { code:"NA", label:"Sin fecha" };
-  const today = new Date();
-  const diff = daysDiff(today, d);
-  if(diff <= VALID_DAYS) return { code:"OK", label:"Vigente" };
-  return { code:"KO", label:"Vencido" };
-}
-function fmtDMY(d){
-  if(!d) return "";
-  const dd = String(d.getDate()).padStart(2,"0");
-  const mm = String(d.getMonth()+1).padStart(2,"0");
-  const yy = d.getFullYear();
-  return `${dd}/${mm}/${yy}`;
-}
-
-/* -------- Pintado -------- */
-function paintAreasPanel(rows){
-  const wrap = byId("areasList");
-  const empty = byId("areasEmpty");
-  if(!wrap) return;
-
-  // agrupar por área
-  const map = new Map(); // area -> {H,M,total,vig,venc, lastDate}
-  for(const r of rows){
-    const area = String(r.Area||"").trim();
-    if(!area) continue;
-    const sexo = String(r.Sexo||"").trim().toLowerCase();
-    const d = parseFechaDMY(r.Fecha);
-    const st = statusFromDate(d);
-
-    if(!map.has(area)) map.set(area, {H:0,M:0,total:0,vig:0,venc:0,lastDate:null});
-    const o = map.get(area);
-
-    if(/^h/.test(sexo)) o.H += 1;
-    else if(/^m/.test(sexo)) o.M += 1;
-
-    o.total += 1;
-    if(st.code === "OK") o.vig += 1;
-    else if(st.code === "KO") o.venc += 1;
-
-    if(d && (!o.lastDate || d > o.lastDate)) o.lastDate = d;
-  }
-
-  const items = Array.from(map.entries()).sort((a,b)=> a[0].localeCompare(b[0]));
-  if(items.length === 0){
-    wrap.innerHTML = "";
-    empty.classList.remove("d-none");
-    return;
-  }
-  empty.classList.add("d-none");
-
-  wrap.innerHTML = `
-    <div class="list-group">
-      ${items.map(([area, o]) => areaItem(area, o)).join("")}
-    </div>
-  `;
-
-  // delegación: clic navega a la lista prefiltrada
-  wrap.querySelectorAll("[data-area]").forEach(a => {
-    a.addEventListener("click", () => {
-      location.href = "cuestionarios_respondidos.html?area=" + encodeURIComponent(a.dataset.area);
+    // Si otro tab guarda nuevos formularios, refrescar
+    window.addEventListener("cuestionariosCacheUpdated", () => {
+      tryLoadFromCache();
+      buildIndex(); renderAreas();
     });
   });
-}
 
-function areaItem(area, o){
-  const last = o.lastDate ? fmtDMY(o.lastDate) : "—";
-  const statusBadge = o.venc > 0
-    ? `<span class="badge text-bg-danger">Vencidos ${o.venc}</span>`
-    : `<span class="badge text-bg-success">Vigentes ${o.vig}</span>`;
+  /* ======== Carga de datos ======== */
+  function tryLoadFromCache(){
+    try{
+      const cache = JSON.parse(localStorage.getItem(CACHE_KEY_RESP) || "null");
+      if(cache && Array.isArray(cache.rows)) {
+        RESP_ROWS = cache.rows.slice();
+      }
+    }catch(_){}
+  }
 
-  return `
-    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-            data-area="${escapeHtml(area)}" title="Ver cuestionarios de ${escapeHtml(area)}">
-      <div class="me-2">
-        <div class="fw-semibold">${escapeHtml(area)}</div>
-        <div class="small text-muted">
-          H ${o.H} · M ${o.M} · Total ${o.total} · Última: ${last}
-        </div>
-      </div>
-      <div class="d-flex align-items-center gap-2">
-        ${statusBadge}
-        <i class="bi bi-chevron-right text-muted"></i>
-      </div>
-    </button>
-  `;
-}
+  async function tryFetchXlsx(){
+    try{
+      if(!window.RESP_XLSX) return;
+      const url = withBuster(window.RESP_XLSX);
+      const res = await fetch(url, { cache: "no-store" });
+      if(!res.ok) return;
+      const buf = await res.arrayBuffer();
+      if(!buf || buf.byteLength < 64) return;
 
-function escapeHtml(str){
-  return String(str).replace(/[&<>"']/g, s => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  })[s]);
-}
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = pickRespuestasSheet(wb);
+      if(!ws) return;
+
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+      // Fusionar evitando duplicados por ID (quedarse con el más reciente si no hay fecha)
+      const map = new Map(RESP_ROWS.map(r => [String(r.ID||""), r]));
+      for(const r of rows){
+        const k = String(r.ID||"");
+        if(!k){ continue; }
+        if(!map.has(k)){
+          map.set(k, r);
+        }
+      }
+      RESP_ROWS = Array.from(map.values());
+    }catch(_){}
+  }
+
+  function pickRespuestasSheet(wb){
+    let ws = wb.Sheets?.["Respuestas"];
+    if(!ws){
+      const goal = norm("Respuestas");
+      for(const name of wb.SheetNames){
+        if(norm(name).includes("respuesta")){ ws = wb.Sheets[name]; break; }
+      }
+    }
+    return ws || wb.Sheets?.[wb.SheetNames[0]];
+  }
+
+  /* ======== Indexación y vigencia ======== */
+  function buildIndex(){
+    INDEX = {};
+    // Agrupar por Área → Puesto → Persona (quedarse con la respuesta más reciente)
+    const lastByPerson = new Map(); // key = area|puesto|nombre → fila más reciente
+    for(const r of RESP_ROWS){
+      const area  = String(r.Area||"").trim();
+      const puesto= String(r.Puesto_de_Trabajo||"").trim();
+      const nombre= String(r.Nombre_Trabajador||"").trim();
+      if(!area || !nombre) continue;
+
+      const key = `${area}||${puesto}||${nombre}`.toLowerCase();
+      const prev = lastByPerson.get(key);
+      if(!prev){ lastByPerson.set(key, r); continue; }
+
+      const d1 = parseDateFlex(prev.Fecha);
+      const d2 = parseDateFlex(r.Fecha);
+      if(d2.getTime() > d1.getTime()) lastByPerson.set(key, r);
+    }
+
+    // Construir índice
+    for(const [,row] of lastByPerson){
+      const area  = String(row.Area||"").trim();
+      const puesto= String(row.Puesto_de_Trabajo||"").trim() || "(Sin puesto)";
+      const nombre= String(row.Nombre_Trabajador||"").trim();
+      const sexo  = String(row.Sexo||"").trim();
+      const fecha = String(row.Fecha||"").trim();
+      const fechaD= parseDateFlex(fecha);
+      const vigente = isVigente(fechaD);
+      const id = String(row.ID||"");
+
+      if(!INDEX[area]) INDEX[area] = { puestos: {}, total:0, vigentes:0, vencidos:0 };
+      if(!INDEX[area].puestos[puesto]) INDEX[area].puestos[puesto] = [];
+      INDEX[area].puestos[puesto].push({ id, nombre, sexo, fecha, vigente });
+
+      INDEX[area].total++;
+      if(vigente) INDEX[area].vigentes++; else INDEX[area].vencidos++;
+    }
+
+    // Ordenar personas por nombre dentro de cada puesto
+    Object.values(INDEX).forEach(a => {
+      Object.keys(a.puestos).forEach(p => {
+        a.puestos[p].sort((x,y) => x.nombre.localeCompare(y.nombre));
+      });
+    });
+  }
+
+  function isVigente(d){
+    if(!(d instanceof Date) || isNaN(d)) return false;
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    const days = diff / (1000*60*60*24);
+    return days <= 365; // vigente si <= 12 meses
+  }
+
+  function parseDateFlex(s){
+    const t = String(s||"").trim();
+    if(!t) return new Date(0);
+    // dd/mm/yyyy
+    if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(t)){
+      const [dd,mm,yy] = t.split("/").map(x=>parseInt(x,10));
+      return new Date(yy, mm-1, dd);
+    }
+    // yyyy-mm-dd
+    if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(t)){
+      const [yy,mm,dd] = t.split("-").map(x=>parseInt(x,10));
+      return new Date(yy, mm-1, dd);
+    }
+    // Date parse fallback
+    const d = new Date(t);
+    return isNaN(d) ? new Date(0) : d;
+  }
+
+  function norm(s){
+    return String(s||"").normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'').toLowerCase();
+  }
+
+  /* ======== Render ======== */
+  function renderAreas(){
+    const wrap = document.getElementById(AREAS_WRAP_ID);
+    const empty = document.getElementById(AREAS_EMPTY_ID);
+    if(!wrap) return;
+
+    const areas = Object.keys(INDEX).sort((a,b)=> a.localeCompare(b));
+    if(areas.length === 0){
+      wrap.innerHTML = "";
+      if(empty) empty.classList.remove("d-none");
+      return;
+    }
+    if(empty) empty.classList.add("d-none");
+
+    const accId = "areasAcc";
+    let html = `<div class="accordion" id="${accId}">`;
+    areas.forEach((area, i) => {
+      const a = INDEX[area];
+      const areaId = `area_${i}`;
+      html += `
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="h_${areaId}">
+            <button class="accordion-button collapsed d-flex justify-content-between align-items-center" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#c_${areaId}" aria-expanded="false" aria-controls="c_${areaId}">
+              <span class="me-2">${escapeHtml(area)}</span>
+              <span class="ms-auto d-inline-flex gap-1">
+                <span class="badge text-bg-success" title="Vigentes">${a.vigentes}</span>
+                <span class="badge text-bg-danger"  title="Vencidos">${a.vencidos}</span>
+                <span class="badge text-bg-secondary" title="Total">${a.total}</span>
+              </span>
+            </button>
+          </h2>
+          <div id="c_${areaId}" class="accordion-collapse collapse" aria-labelledby="h_${areaId}" data-bs-parent="#${accId}">
+            <div class="accordion-body p-2">
+              ${renderPuestos(area, a.puestos)}
+            </div>
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+    wrap.innerHTML = html;
+  }
+
+  function renderPuestos(area, puestosMap){
+    const puestos = Object.keys(puestosMap).sort((a,b)=> a.localeCompare(b));
+    if(puestos.length === 0) return `<div class="text-muted small">No hay puestos.</div>`;
+
+    let html = `<div class="list-group list-group-flush">`;
+    puestos.forEach((p, idx) => {
+      const ppl = puestosMap[p];
+      const vig = ppl.filter(x => x.vigente).length;
+      const ven = ppl.length - vig;
+      const pid = `pst_${norm(area)}_${idx}`;
+      html += `
+        <div class="list-group-item px-0">
+          <div class="d-flex align-items-center">
+            <button class="btn btn-sm btn-outline-secondary me-2" type="button" data-bs-toggle="collapse" data-bs-target="#${pid}" aria-expanded="false" aria-controls="${pid}">
+              <i class="bi bi-caret-down"></i>
+            </button>
+            <div class="flex-grow-1">
+              <div class="fw-semibold">${escapeHtml(p)}</div>
+              <div class="small text-muted">Personas: ${ppl.length}
+                · <span class="text-success">Vigentes: ${vig}</span>
+                · <span class="text-danger">Vencidos: ${ven}</span>
+              </div>
+            </div>
+          </div>
+          <div id="${pid}" class="collapse mt-2">
+            ${renderPersonas(ppl)}
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+    return html;
+  }
+
+  function renderPersonas(list){
+    if(!list || list.length===0) return `<div class="text-muted small ms-5">Sin personas.</div>`;
+    let html = `<ul class="list-group list-group-flush ms-4">`;
+    list.forEach(p => {
+      const badge = p.vigente
+        ? `<span class="badge rounded-pill text-bg-success">Vigente</span>`
+        : `<span class="badge rounded-pill text-bg-danger">Vencido</span>`;
+      html += `
+        <li class="list-group-item px-0 d-flex align-items-center justify-content-between">
+          <div class="me-2">
+            <div class="fw-semibold">${escapeHtml(p.nombre)}</div>
+            <div class="small text-muted">Sexo: ${escapeHtml(p.sexo || "-")} · Fecha: ${escapeHtml(p.fecha || "-")}</div>
+          </div>
+          <a class="btn btn-sm btn-outline-primary" href="cuestionario.html?id=${encodeURIComponent(p.id)}">
+            <i class="bi bi-eye"></i> Ver ${badge}
+          </a>
+        </li>`;
+    });
+    html += `</ul>`;
+    return html;
+  }
+
+  function escapeHtml(str){
+    return String(str ?? "").replace(/[&<>"']/g, s => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    })[s]);
+  }
+  function withBuster(path){
+    const sep = path.includes("?") ? "&" : "?";
+    return `${path}${sep}v=${Date.now()}`;
+  }
+})();

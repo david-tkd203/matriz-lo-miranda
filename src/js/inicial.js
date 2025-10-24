@@ -293,84 +293,84 @@ function cardHtml(r, idx){
 }
 
 /* ====== Panel Detalle ====== */
-/* ====== Panel Detalle (mejorado) ====== */
+/* ====== Panel Detalle (enriquecido) ====== */
 function openDetail(r){
   const body = el("detailBody");
   const adv = needsAdvancedEval(r);
   const mmcWarn = (r.L === "SI" || r.M === "SI");
 
-  // Factores SI / NO
-  const siFactors = RISKS.filter(x => (r[x.key]||"").toUpperCase() === "SI");
-  const noFactors = RISKS.filter(x => (r[x.key]||"").toUpperCase() === "NO");
-  const naFactors = RISKS.filter(x => !(r[x.key]||"").trim());
-
-  // HTML por factor
+  // Factores con su “cumple/no” y hoja relacionada
   const factorsHtml = RISKS.map(x => {
     const v = (r[x.key]||"").toString().toUpperCase() || "N/A";
-    const cls = v === "SI" ? "badge-yes" : (v === "NO" ? "badge-no" : "badge-na");
-    return `<div class="d-flex justify-content-between align-items-center py-1 border-bottom small">
-      <div><strong>${escapeHtml(x.label)}</strong> <span class="text-muted">(${escapeHtml(x.hoja)})</span></div>
-      <div><span class="badge ${cls}">${v}</span></div>
-    </div>`;
+    const cls = v === "SI" ? "text-bg-danger" : (v === "NO" ? "text-bg-success" : "text-bg-secondary");
+    const note = v === "SI" ? "Revisar criterios – podría requerir avanzada." :
+                v === "NO" ? "Sin hallazgo para este factor." :
+                             "Dato no disponible.";
+    return `
+      <div class="d-flex align-items-start justify-content-between py-1 border-bottom">
+        <div class="me-2">
+          <div class="fw-semibold">${escapeHtml(x.label)}</div>
+          <div class="small text-muted">Hoja: ${escapeHtml(x.hoja)} · ${escapeHtml(note)}</div>
+        </div>
+        <span class="badge ${cls}">${v}</span>
+      </div>`;
   }).join("");
 
-  // Reglas aplicadas
-  const ruleLines = [
-    "• Si al menos un factor (J–P) está en SI → corresponde identificación avanzada.",
-    "• Si todos (J–P) están en NO y hay datos presentes → ausencia total del riesgo.",
-    "• Para MMC, revisar específicamente hojas: Levantamiento/Descenso y Empuje/Arrastre."
-  ];
-  const reasons = siFactors.length
-    ? `<li>Factores en <strong>SI</strong>: ${siFactors.map(x=>`<em>${escapeHtml(x.label)}</em>`).join(", ")}.</li>`
-    : `<li>Todos los factores en <strong>NO</strong>.</li>`;
-  const naInfo = naFactors.length ? `<li>Hay ${naFactors.length} factor(es) sin dato (N/A).</li>` : "";
-
+  // Q y banderas
   const advAlert = adv
-    ? `<div class="alert alert-danger"><i class="bi bi-x-octagon"></i> <strong>Corresponde identificación avanzada</strong> para: ${siFactors.map(x=>`<span class="badge text-bg-danger me-1">${escapeHtml(x.hoja)}</span>`).join(" ")}</div>`
-    : `<div class="alert alert-success"><i class="bi bi-check2-circle"></i> Sin hallazgos que requieran avanzada.</div>`;
+    ? `<div class="alert alert-danger"><i class="bi bi-x-octagon"></i> <strong>Corresponde identificación avanzada.</strong></div>`
+    : `<div class="alert alert-success"><i class="bi bi-check2"></i> Sin hallazgos que requieran avanzada.</div>`;
 
   const mmcAlert = mmcWarn
     ? `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> Atención MMC:
-         ${ r.L==="SI" ? "<span class='badge text-bg-warning me-1'>Levantamiento/Descenso: SI</span>" : "" }
-         ${ r.M==="SI" ? "<span class='badge text-bg-warning'>Empuje/Arrastre: SI</span>" : "" }
-       </div>`
+        ${ r.L==="SI" ? `<span class="badge rounded-pill text-bg-warning ms-1">Levantamiento/Descenso</span>` : "" }
+        ${ r.M==="SI" ? `<span class="badge rounded-pill text-bg-warning ms-1">Empuje/Arrastre</span>` : "" }
+      </div>` : "";
+
+  // Resumen de cuestionarios del Área (toma de cache si existe)
+  const qx = getAreaSurveySummary(r.B);
+  const qxHtml = qx
+    ? `<div class="mt-3">
+        <div class="small text-muted mb-1">Cuestionarios del área (últimos 12 meses)</div>
+        <div class="d-flex flex-wrap gap-2 mb-2">
+          <span class="badge text-bg-success">Vigentes: ${qx.vigentes}</span>
+          <span class="badge text-bg-danger">Vencidos: ${qx.vencidos}</span>
+          <span class="badge text-bg-secondary">Total: ${qx.total}</span>
+        </div>
+        ${qx.sample.length ? `<ul class="list-group list-group-flush">
+          ${qx.sample.map(p => `
+            <li class="list-group-item px-0 d-flex justify-content-between">
+              <div>${escapeHtml(p.nombre)} <span class="small text-muted">· ${escapeHtml(p.fecha)}</span></div>
+              <span class="badge rounded-pill ${p.vigente ? 'text-bg-success' : 'text-bg-danger'}">${p.vigente?'Vigente':'Vencido'}</span>
+            </li>`).join("")}
+        </ul>` : `<div class="text-muted small">No hay respuestas registradas para esta área.</div>`}
+        <div class="mt-2">
+          <a class="btn btn-sm btn-outline-primary" href="cuestionarios_respondidos.html?area=${encodeURIComponent(r.B||'')}">
+            <i class="bi bi-list-ul"></i> Ver cuestionarios del área
+          </a>
+        </div>
+      </div>`
     : "";
 
   body.innerHTML = `
-    <div class="d-flex justify-content-between align-items-start">
-      <div>
-        <div class="small text-muted">Área</div>
-        <h5 class="mb-1">${escapeHtml(r.B || "-")}</h5>
-        <div class="mb-2"><i class="bi bi-person-badge"></i> <strong>Puesto:</strong> ${escapeHtml(r.C || "-")}</div>
-        <div class="mb-2"><i class="bi bi-list-check"></i> <strong>Tareas:</strong> ${escapeHtml(r.D || "-")}</div>
-        <div class="d-flex flex-wrap gap-2">
-          <span class="badge text-bg-light"><i class="bi bi-clock"></i> ${escapeHtml(r.E || "-")}</span>
-          <span class="badge text-bg-light"><i class="bi bi-plus-circle"></i> HE/Día: ${escapeHtml(r.F||"0")}</span>
-          <span class="badge text-bg-light"><i class="bi bi-plus-circle-dotted"></i> HE/Sem: ${escapeHtml(r.G||"0")}</span>
-          <span class="badge text-bg-light"><i class="bi bi-people"></i> H ${escapeHtml(r.H||"0")} · M ${escapeHtml(r.I||"0")}</span>
-        </div>
+    <div>
+      <div class="small text-muted">Área</div>
+      <h5 class="mb-1">${escapeHtml(r.B || "-")}</h5>
+      <div class="mb-2"><i class="bi bi-person-badge"></i> <strong>Puesto:</strong> ${escapeHtml(r.C || "-")}</div>
+      <div class="mb-2"><i class="bi bi-list-check"></i> <strong>Tareas:</strong> ${escapeHtml(r.D || "-")}</div>
+      <div class="d-flex flex-wrap gap-2 mb-2">
+        <span class="badge text-bg-light"><i class="bi bi-clock"></i> ${escapeHtml(r.E || "-")}</span>
+        <span class="badge text-bg-light"><i class="bi bi-people"></i> H ${escapeHtml(r.H||"0")} · M ${escapeHtml(r.I||"0")}</span>
+        <span class="badge ${ (r.Q||"").toLowerCase().includes('avanzada') ? 'text-bg-danger' : 'text-bg-primary' }">
+          ${escapeHtml(r.Q||"-")}
+        </span>
       </div>
-    </div>
-
-    <hr class="my-3">
-
-    ${advAlert}
-    ${mmcAlert}
-
-    <div class="mb-3">
-      <div class="small text-muted mb-1">Reglas aplicadas</div>
-      <ul class="mb-2">
-        ${ruleLines.map(li=>`<li>${li}</li>`).join("")}
-        ${reasons}
-        ${naInfo}
-      </ul>
-      <div class="small text-muted">Resultado hoja inicial</div>
-      <div>${escapeHtml(r.Q||"-")}</div>
-    </div>
-
-    <h6 class="mt-3 mb-1">Detalle por factor</h6>
-    <div class="border rounded">
+      ${advAlert}
+      ${mmcAlert}
+      <hr>
+      <h6 class="mb-2">Factores evaluados</h6>
       ${factorsHtml}
+      ${qxHtml}
     </div>
   `;
 
@@ -378,6 +378,48 @@ function openDetail(r){
   const oc = bootstrap.Offcanvas.getOrCreateInstance('#detailPanel');
   oc.show();
 }
+
+// Lee cache y resume cuestionarios del área (vigentes/vencidos + muestra corta)
+function getAreaSurveySummary(area){
+  try{
+    const cache = JSON.parse(localStorage.getItem("RESPUESTAS_CACHE_V1") || "null");
+    if(!cache || !Array.isArray(cache.rows)) return null;
+    const rows = cache.rows.filter(r => String(r.Area||"").trim() === String(area||"").trim());
+    if(!rows.length) return {total:0, vigentes:0, vencidos:0, sample:[]};
+
+    // quedarnos con última respuesta por persona
+    const last = new Map();
+    rows.forEach(r => {
+      const k = (String(r.Puesto_de_Trabajo||"") + "||" + String(r.Nombre_Trabajador||"")).toLowerCase();
+      const prev = last.get(k);
+      if(!prev){ last.set(k,r); return; }
+      const d1 = parseFlex(prev.Fecha), d2 = parseFlex(r.Fecha);
+      if(d2.getTime() > d1.getTime()) last.set(k,r);
+    });
+
+    let vig=0, ven=0;
+    const items = [];
+    last.forEach(r => {
+      const d = parseFlex(r.Fecha);
+      const vigente = (Date.now() - d.getTime()) / 86400000 <= 365;
+      if(vigente) vig++; else ven++;
+      items.push({ nombre: String(r.Nombre_Trabajador||""), fecha: String(r.Fecha||""), vigente });
+    });
+
+    // muestra corta (hasta 5)
+    items.sort((a,b)=> a.nombre.localeCompare(b.nombre));
+    return { total: items.length, vigentes: vig, vencidos: ven, sample: items.slice(0,5) };
+  }catch(_){ return null; }
+
+  function parseFlex(s){
+    const t = String(s||""); 
+    if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(t)){ const [dd,mm,yy]=t.split("/").map(n=>+n); return new Date(yy,mm-1,dd); }
+    if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(t)){ const [yy,mm,dd]=t.split("-").map(n=>+n); return new Date(yy,mm-1,dd); }
+    const d = new Date(t); return isNaN(d)? new Date(0):d;
+  }
+}
+
+
 
 function needsAdvancedEval(r){
   // Avanzada si Q lo indica o si algún factor en SI
