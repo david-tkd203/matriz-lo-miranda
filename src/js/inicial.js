@@ -293,29 +293,48 @@ function cardHtml(r, idx){
 }
 
 /* ====== Panel Detalle ====== */
+/* ====== Panel Detalle (mejorado) ====== */
 function openDetail(r){
   const body = el("detailBody");
   const adv = needsAdvancedEval(r);
   const mmcWarn = (r.L === "SI" || r.M === "SI");
 
+  // Factores SI / NO
+  const siFactors = RISKS.filter(x => (r[x.key]||"").toUpperCase() === "SI");
+  const noFactors = RISKS.filter(x => (r[x.key]||"").toUpperCase() === "NO");
+  const naFactors = RISKS.filter(x => !(r[x.key]||"").trim());
+
+  // HTML por factor
   const factorsHtml = RISKS.map(x => {
     const v = (r[x.key]||"").toString().toUpperCase() || "N/A";
     const cls = v === "SI" ? "badge-yes" : (v === "NO" ? "badge-no" : "badge-na");
-    return `<div class="factor-row">
+    return `<div class="d-flex justify-content-between align-items-center py-1 border-bottom small">
       <div><strong>${escapeHtml(x.label)}</strong> <span class="text-muted">(${escapeHtml(x.hoja)})</span></div>
       <div><span class="badge ${cls}">${v}</span></div>
     </div>`;
   }).join("");
 
+  // Reglas aplicadas
+  const ruleLines = [
+    "• Si al menos un factor (J–P) está en SI → corresponde identificación avanzada.",
+    "• Si todos (J–P) están en NO y hay datos presentes → ausencia total del riesgo.",
+    "• Para MMC, revisar específicamente hojas: Levantamiento/Descenso y Empuje/Arrastre."
+  ];
+  const reasons = siFactors.length
+    ? `<li>Factores en <strong>SI</strong>: ${siFactors.map(x=>`<em>${escapeHtml(x.label)}</em>`).join(", ")}.</li>`
+    : `<li>Todos los factores en <strong>NO</strong>.</li>`;
+  const naInfo = naFactors.length ? `<li>Hay ${naFactors.length} factor(es) sin dato (N/A).</li>` : "";
+
   const advAlert = adv
-    ? `<div class="alert alert-danger"><i class="bi bi-x-octagon"></i> <strong>Corresponde identificación avanzada.</strong></div>`
+    ? `<div class="alert alert-danger"><i class="bi bi-x-octagon"></i> <strong>Corresponde identificación avanzada</strong> para: ${siFactors.map(x=>`<span class="badge text-bg-danger me-1">${escapeHtml(x.hoja)}</span>`).join(" ")}</div>`
     : `<div class="alert alert-success"><i class="bi bi-check2-circle"></i> Sin hallazgos que requieran avanzada.</div>`;
 
   const mmcAlert = mmcWarn
-    ? `<div class="alert alert-warning mmc-alert"><i class="bi bi-exclamation-triangle"></i> Atención MMC:
-        ${ r.L==="SI" ? "<span class='pill warn'>Levantamiento/Descenso: SI</span> " : "" }
-        ${ r.M==="SI" ? "<span class='pill warn'>Empuje/Arrastre: SI</span>" : "" }
-      </div>` : "";
+    ? `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> Atención MMC:
+         ${ r.L==="SI" ? "<span class='badge text-bg-warning me-1'>Levantamiento/Descenso: SI</span>" : "" }
+         ${ r.M==="SI" ? "<span class='badge text-bg-warning'>Empuje/Arrastre: SI</span>" : "" }
+       </div>`
+    : "";
 
   body.innerHTML = `
     <div class="d-flex justify-content-between align-items-start">
@@ -324,24 +343,35 @@ function openDetail(r){
         <h5 class="mb-1">${escapeHtml(r.B || "-")}</h5>
         <div class="mb-2"><i class="bi bi-person-badge"></i> <strong>Puesto:</strong> ${escapeHtml(r.C || "-")}</div>
         <div class="mb-2"><i class="bi bi-list-check"></i> <strong>Tareas:</strong> ${escapeHtml(r.D || "-")}</div>
-        <div class="d-flex gap-2">
-          <span class="pill"><i class="bi bi-clock"></i> ${escapeHtml(r.E || "-")}</span>
-          <span class="pill"><i class="bi bi-people"></i> H ${escapeHtml(r.H||"0")} · M ${escapeHtml(r.I||"0")}</span>
+        <div class="d-flex flex-wrap gap-2">
+          <span class="badge text-bg-light"><i class="bi bi-clock"></i> ${escapeHtml(r.E || "-")}</span>
+          <span class="badge text-bg-light"><i class="bi bi-plus-circle"></i> HE/Día: ${escapeHtml(r.F||"0")}</span>
+          <span class="badge text-bg-light"><i class="bi bi-plus-circle-dotted"></i> HE/Sem: ${escapeHtml(r.G||"0")}</span>
+          <span class="badge text-bg-light"><i class="bi bi-people"></i> H ${escapeHtml(r.H||"0")} · M ${escapeHtml(r.I||"0")}</span>
         </div>
       </div>
     </div>
 
-    <hr>
+    <hr class="my-3">
 
     ${advAlert}
     ${mmcAlert}
 
-    <h6 class="mt-3">Factores evaluados</h6>
-    ${factorsHtml}
+    <div class="mb-3">
+      <div class="small text-muted mb-1">Reglas aplicadas</div>
+      <ul class="mb-2">
+        ${ruleLines.map(li=>`<li>${li}</li>`).join("")}
+        ${reasons}
+        ${naInfo}
+      </ul>
+      <div class="small text-muted">Resultado hoja inicial</div>
+      <div>${escapeHtml(r.Q||"-")}</div>
+    </div>
 
-    <hr>
-    <div class="small text-muted">Resultado hoja inicial</div>
-    <div>${escapeHtml(r.Q||"-")}</div>
+    <h6 class="mt-3 mb-1">Detalle por factor</h6>
+    <div class="border rounded">
+      ${factorsHtml}
+    </div>
   `;
 
   el("detailTitle").textContent = `Detalle · ${r.B || "-"}`;
@@ -350,6 +380,7 @@ function openDetail(r){
 }
 
 function needsAdvancedEval(r){
+  // Avanzada si Q lo indica o si algún factor en SI
   const q = (r.Q||"").toLowerCase();
   const qSaysAdv = q.includes("aplicar identificación avanzada") || q.includes("aplicar identificacion avanzada");
   const anyYes = ['J','K','L','M','N','O','P'].some(k => (r[k]||"").toUpperCase() === "SI");
