@@ -38,23 +38,44 @@
     <div class="card shadow-sm mb-3 border-0">
       <div class="card-body">
         <div class="row g-3 align-items-end">
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label fw-semibold"><i class="bi bi-diagram-3"></i> Área</label>
             <select id="filterArea" class="form-select">
               <option value="">(Todas)</option>
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label fw-semibold"><i class="bi bi-person-vcard"></i> Puesto de trabajo</label>
             <select id="filterPuesto" class="form-select" disabled>
               <option value="">(Todos)</option>
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label fw-semibold"><i class="bi bi-list-task"></i> Tareas del puesto</label>
             <select id="filterTarea" class="form-select" disabled>
               <option value="">(Todas)</option>
             </select>
+          </div>
+
+          <!-- NUEVO: Filtro por factor -->
+          <div class="col-md-3">
+            <label class="form-label fw-semibold"><i class="bi bi-exclamation-octagon"></i> Factor de riesgo</label>
+            <select id="filterFactor" class="form-select">
+              <option value="">(Todos)</option>
+            </select>
+            <div class="mt-2 d-flex gap-2">
+              <select id="filterFactorState" class="form-select form-select-sm">
+                <option value="">Estado: (Todos)</option>
+                <option value="SI">Solo SI</option>
+                <option value="NO">Solo NO</option>
+              </select>
+              <button id="btnReset" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-counterclockwise"></i>
+              </button>
+              <button id="btnReload" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-arrow-repeat"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -67,14 +88,6 @@
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div class="small text-muted">
             <i class="bi bi-info-circle"></i> Mostrando <span id="countRows">0</span> fichas
-          </div>
-          <div class="d-flex gap-2">
-            <button id="btnReset" class="btn btn-outline-secondary btn-sm">
-              <i class="bi bi-arrow-counterclockwise"></i> Limpiar
-            </button>
-            <button id="btnReload" class="btn btn-outline-primary btn-sm">
-              <i class="bi bi-arrow-repeat"></i> Recargar
-            </button>
           </div>
         </div>
 
@@ -96,9 +109,7 @@
             <p class="text-muted small mb-3">
               Se muestran los cuestionarios respondidos (H+M) por área, según el Excel generado.
             </p>
-            <div id="areasList">
-              <!-- Se llena vía JS con una list-group -->
-            </div>
+            <div id="areasList"></div>
             <div id="areasEmpty" class="alert alert-warning small d-none mt-3">
               <i class="bi bi-exclamation-triangle"></i> No hay cuestionarios para mostrar.
             </div>
@@ -116,18 +127,25 @@
   </div>
 </footer>
 
+<!-- Offcanvas Detalle (FRAME) -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="detailPanel" aria-labelledby="detailTitle">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="detailTitle">Detalle</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div id="detailBody"></div>
+  </div>
+</div>
+
 <!-- Rutas de Excels -->
 <script>
   window.DEFAULT_XLSX_PATH = "../source/4. LO MIRANDA MATRIZ VOTME 2024 PLANTA CERDOS.XLSX";
   window.RESP_XLSX      = "../source/respuestas_cuestionario.xlsx";
 </script>
 
-<!-- JS de la matriz (lo que ya tenías) -->
 <script src="../js/inicial.js"></script>
-
-<!-- JS nuevo: panel de cuestionarios por área -->
 <script src="../js/inicial_cuestionarios.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
