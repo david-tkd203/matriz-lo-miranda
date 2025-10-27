@@ -418,10 +418,9 @@ function cardHtml(r, idx){
 
           <div class="d-flex flex-wrap align-items-center gap-2 mt-2 mb-2">
             <span class="status-pill ${status.cls}" title="Estado según hoja Movimiento repetitivo (P/W)">
-              <i class="bi bi-activity"></i> ${status.label}
+              <i class="bi bi-activity"></i>Condición Aceptable: ${status.label}
             </span>
-            ${mov ? `<span class="pill"><strong>P:</strong> ${escapeHtml(mov.P??"")}</span>
-                     <span class="pill"><strong>W:</strong> ${escapeHtml(mov.W??"")}</span>`
+            ${mov ? `<span class="pill"><strong>Condición Critica:</strong> ${escapeHtml(mov.W??"")}</span>`
                  : `<span class="pill">Hoja Mov. repetitivo: sin coincidencia</span>`}
           </div>
 
