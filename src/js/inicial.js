@@ -26,15 +26,15 @@ const COLS = {
 const RISKS = [
   { key: 'J', label: COLS.J, hoja: 'Mov. Rep.', css: 'f-rep' },
   { key: 'K', label: COLS.K, hoja: 'Postura estatica', css: 'f-post' },
-  { key: 'L', label: COLS.L, hoja: 'MMC Levantamiento-Descenso', css: 'f-lev' },
-  { key: 'M', label: COLS.M, hoja: 'MMC Empuje-Arrastre', css: 'f-push' },
-  { key: 'N', label: COLS.N, hoja: 'Manejo manual PCTS', css: 'f-pcts' },
-  { key: 'O', label: COLS.O, hoja: 'Vibración Cuerpo completo', css: 'f-vcc' },
-  { key: 'P', label: COLS.P, hoja: 'Vibración Mano-Brazo', css: 'f-vhb' },
+  { key: 'L', label: COLS.L, hoja: 'f-lev' },
+  { key: 'M', label: COLS.M, hoja: 'f-push' },
+  { key: 'N', label: COLS.N, hoja: 'f-pcts' },
+  { key: 'O', label: COLS.O, hoja: 'f-vcc' },
+  { key: 'P', label: COLS.P, hoja: 'f-vhb' },
 ];
 
 let RAW_ROWS = [];
-let MOVREP_MAP = Object.create(null); // key -> {P, W, rowObj}
+let MOVREP_MAP = Object.create(null); // key -> {P, W, rowObj, rowArr}
 let MOVREP_HEADERS = [];
 
 let FILTERS = { area: "", puesto: "", tarea: "", factorKey: "", factorState: "" };
@@ -246,7 +246,8 @@ function processWorkbook(arrayBuffer){
           MOVREP_MAP[k] = {
             P: r[idxP] ?? "",
             W: r[idxW] ?? "",
-            rowObj: rec
+            rowObj: rec,
+            rowArr: r.slice()  // ← guardamos array para poder filtrar por índice
           };
         }
       }
@@ -418,9 +419,9 @@ function cardHtml(r, idx){
 
           <div class="d-flex flex-wrap align-items-center gap-2 mt-2 mb-2">
             <span class="status-pill ${status.cls}" title="Estado según hoja Movimiento repetitivo (P/W)">
-              <i class="bi bi-activity"></i>Condición Aceptable: ${status.label}
+              <i class="bi bi-activity"></i> Condición Aceptable: ${status.label}
             </span>
-            ${mov ? `<span class="pill"><strong>Condición Critica:</strong> ${escapeHtml(mov.W??"")}</span>`
+            ${mov ? `<span class="pill"><strong>Condición Crítica:</strong> ${escapeHtml(mov.W??"")}</span>`
                  : `<span class="pill">Hoja Mov. repetitivo: sin coincidencia</span>`}
           </div>
 
@@ -450,9 +451,36 @@ function cardHtml(r, idx){
   `;
 }
 
+/* índices a ignorar en el modal: Col2..Col9 (1..8 en 0-based) */
+const SKIP_IDX = new Set([1,2,3,4,5,6,7,8]);
+const SKIP_LABELS = new Set(["mujeres","col2","col3","col4","col5","col6","col7","col8","col9"]);
+
 function openDetail(r){
   const mov = getMovRepFor(r);
   const status = classifyMovRep(mov?.P, mov?.W);
+
+  // Bloque de estados P/W visible y resaltado cuando hay “No aceptable”
+  const pText = String(mov?.P ?? "").trim();
+  const wText = String(mov?.W ?? "").trim();
+  const pBad  = /no acept|criti|alto/i.test(pText);
+  const wBad  = /no acept|criti|alto/i.test(wText);
+
+  const statesBlock = `
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <div class="state-card ${pBad ? 'hl-risk' : 'hl-ok'}">
+          <div class="sc-head"><i class="bi bi-check2-circle"></i> Condición Aceptable (P)</div>
+          <div class="sc-body">${escapeHtml(pText || '—')}</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="state-card ${wBad ? 'hl-risk' : 'hl-warn'}">
+          <div class="sc-head"><i class="bi bi-exclamation-octagon"></i> Condición Crítica (W)</div>
+          <div class="sc-body">${escapeHtml(wText || '—')}</div>
+        </div>
+      </div>
+    </div>
+  `;
 
   const header = `
     <div class="detail-card mb-3">
@@ -467,29 +495,42 @@ function openDetail(r){
           <span class="status-pill ${status.cls}" style="font-size:1rem;">
             <i class="bi bi-activity"></i> ${status.label}
           </span>
-          ${mov ? `<div class="d-flex gap-2">
-                    <span class="pill"><strong>P:</strong> ${escapeHtml(mov.P??"")}</span>
-                    <span class="pill"><strong>W:</strong> ${escapeHtml(mov.W??"")}</span>
-                   </div>` : ``}
         </div>
       </div>
-      <!-- Repite factores también en el modal -->
       <div class="mt-3">
         <div class="small text-muted mb-1"><i class="bi bi-exclamation-octagon"></i> Factores</div>
         <div class="factors-wrap">${factorChips(r)}</div>
       </div>
+      ${statesBlock}
     </div>
   `;
 
-  // Tabla de preguntas/respuestas de la fila completa de “Mov. Repetitivo”
+  // Tabla de preguntas/respuestas de la fila “Mov. Repetitivo”
   let qa = "";
-  if(mov && mov.rowObj){
-    const entries = Object.entries(mov.rowObj)
-      .filter(([k,v]) => String(v).trim() !== "");
-    const headHtml = `<thead><tr><th style="min-width:220px">Pregunta</th><th>Respuesta</th></tr></thead>`;
-    const bodyHtml = `<tbody>${
-      entries.map(([k,v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(String(v))}</td></tr>`).join("")
-    }</tbody>`;
+  if(mov && (mov.rowArr || mov.rowObj)){
+    const rows = [];
+    if (mov.rowArr && Array.isArray(MOVREP_HEADERS) && MOVREP_HEADERS.length){
+      for(let i=0;i<MOVREP_HEADERS.length;i++){
+        if(SKIP_IDX.has(i)) continue;                                // ignora Col2..Col9
+        const label = MOVREP_HEADERS[i] || `Col${i+1}`;
+        if(SKIP_LABELS.has(toLowerNoAccents(label))) continue;       // ignora por título (ej. Mujeres)
+        const val = mov.rowArr[i];
+        if(String(val ?? "").trim() === "") continue;
+        rows.push([label, val]);
+      }
+    }else{
+      // Fallback: usar el objeto clave->valor, filtrando por títulos a ignorar
+      for(const [k,v] of Object.entries(mov.rowObj)){
+        if(String(v ?? "").trim() === "") continue;
+        if(SKIP_LABELS.has(toLowerNoAccents(k))) continue;
+        rows.push([k, v]);
+      }
+    }
+
+    const headHtml = `<thead><tr><th style="min-width:260px">Pregunta</th><th>Respuesta</th></tr></thead>`;
+    const bodyHtml = `<tbody>${rows.map(([k,v]) => `
+        <tr><th>${escapeHtml(k)}</th><td>${escapeHtml(String(v))}</td></tr>
+      `).join("")}</tbody>`;
 
     qa = `
       <div class="table-like">
