@@ -1,176 +1,195 @@
 :root{
+  /* Paleta IST + acentos vivos */
   --ist-purple:#552789;
   --ist-purple-dk:#3e1a66;
+  --ink:#0f172a;
   --muted:#8b86a3;
-  --chip-bg:#f7f2ff;
+  --panel:#ffffff;
+  --soft:#f6f7fb;
+  --border:#e5e7eb;
 
   /* Estados */
-  --ok:#2ecc71;
-  --warn:#f1c40f;
-  --risk:#e74c3c;
-  --soft:#f4f2fb;
+  --ok:#16a34a;
+  --warn:#d97706;
+  --risk:#dc2626;
+
+  /* Chips generales */
+  --chip-bg:#f7f2ff;
+  --chip-br:#e9dcff;
+
+  /* Acentos por factor */
+  --rep:#7c3aed;  /* Repetitivo */
+  --rep-bg:#f3e8ff;
+
+  --post:#2563eb; /* Postura */
+  --post-bg:#e8f0ff;
+
+  --lev:#059669;  /* Levantamiento/Descenso */
+  --lev-bg:#e7fff5;
+
+  --push:#ea580c; /* Empuje/Arrastre */
+  --push-bg:#fff0e6;
+
+  --pcts:#db2777; /* Manejo de PCTS */
+  --pcts-bg:#ffe6f1;
+
+  --vcc:#7c3aed;  /* Vibración CC (indigo) */
+  --vcc-bg:#efe6ff;
+
+  --vhb:#0ea5e9;  /* Vibración mano-brazo (sky) */
+  --vhb-bg:#e6f6ff;
 }
 
-/* ===== NAVBAR ===== */
-.ist-navbar{ background: var(--ist-purple-dk); }
-.ist-navbar .navbar-brand{ display:inline-flex; align-items:center; gap:.5rem; padding:.25rem 0; }
-.ist-navbar .navbar-brand img{ height:36px; display:block; }
-.ist-navbar .nav-link{ color:#fff; }
-.ist-navbar .nav-link:hover{ color:#f2e9ff; }
+/* ===== Base & Navbar ===== */
+html,body{height:100%;}
+body{background:var(--soft);color:var(--ink);}
+.small,.text-muted{color:var(--muted);}
 
-.small, .text-muted{ color:var(--muted); }
+.ist-navbar{background:var(--ist-purple-dk);}
+.ist-navbar .navbar-brand{display:inline-flex;align-items:center;gap:.5rem;padding:.25rem 0;}
+.ist-navbar .navbar-brand img{height:36px;display:block;}
+.ist-navbar .nav-link{color:#fff;}
+.ist-navbar .nav-link:hover{color:#f2e9ff;}
 
-/* ===== FICHAS (targets) ===== */
+/* ===== Tarjetas (1 por fila) ===== */
+#cardsWrap > .col{width:100%;}
+
 .card-ficha{
-  border-left:5px solid var(--ist-purple);
-  transition: transform .12s ease, box-shadow .12s ease;
-  cursor:pointer;
-  overflow:hidden; /* asegura que nada desborde visualmente */
-  background:#fff;
-  border-radius:.5rem;
+  position:relative;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
 }
-.card-ficha .title{ color:var(--ist-purple); margin:0; }
-.card-ficha:hover{ transform: translateY(-2px); box-shadow:0 8px 18px rgba(0,0,0,.12); }
+.card-ficha:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(16,24,40,.12);border-color:#dfe3ea;}
+.card-ficha .title{margin:0;line-height:1.2;color:var(--ist-purple);}
+
+/* Acento lateral por estado (si tu JS setea data-state="ok|warn|bad|unk") */
+.card-ficha::before{
+  content:"";position:absolute;inset:0 auto 0 0;width:6px;background:#e5e7eb;
+}
+.card-ficha[data-state="ok"]::before{background:rgba(22,163,74,.95);}
+.card-ficha[data-state="warn"]::before{background:rgba(217,119,6,.95);}
+.card-ficha[data-state="bad"]::before{background:rgba(220,38,38,.95);}
+.card-ficha[data-state="unk"]::before{background:#cbd5e1;}
+
+/* Chips / Pills */
 .chip{
-  display:inline-block; font-size:.8rem; background:var(--chip-bg);
-  color:var(--ist-purple); border-radius:16px; padding:.25rem .5rem; margin-right:.25rem;
+  display:inline-flex;align-items:center;gap:.35rem;
+  background:var(--chip-bg);border:1px solid var(--chip-br);color:var(--ist-purple);
+  padding:.25rem .55rem;border-radius:999px;font-size:.8rem;white-space:nowrap;
 }
-
-/* Contenedores de tarjetas/factors: usar clases dedicadas en HTML */
-.cards-wrap,
-.factors-wrap{
-  display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* responsive, tarjetas fluidas */
-  gap:.5rem .6rem;
-  align-items:start;
-  width:100%;
-  box-sizing:border-box;
-}
-
-/* Badges: permitir varias líneas, evitar desborde y mantener legibilidad */
-.card-ficha .badge{
-  display:flex;
-  align-items:flex-start;
-  gap:.35rem;
-  width:100%;                 /* que ocupen el ancho de la “columna” del grid */
-  padding:.45rem .55rem;
-  font-size:.78rem;
-  font-weight:600;
-  border-radius:.5rem;
-  white-space:normal;         /* rompe la restricción de Bootstrap */
-  word-break:break-word;
-  hyphens:auto;               /* cortes más naturales */
-  line-height:1.25;
-  box-sizing:border-box;
-}
-
-/* Variante para badges compactas (si se requiere en HTML) */
-.badge--compact{ padding:.25rem .4rem; font-size:.72rem; }
-
-/* Colores de estado de factor */
-.badge-yes{ background:#d1f7c4; color:#1d7a2e; }
-.badge-no { background:#ffe3e8; color:#b70a3c; }
-.badge-na { background:#eee;    color:#666; }
-
-/* Ajustes responsivos para móviles: menos ancho mínimo si la pantalla es chica */
-@media (max-width: 420px){
-  .cards-wrap,
-  .factors-wrap{
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  }
-  .card-ficha .badge{ font-size:.76rem; padding:.4rem .5rem; }
-}
-
-/* ===== RESULTADOS ===== */
-.alert-success{ background:#eafaf0; border-color:#d8f5e3; }
-.alert-danger { background:#fdecea; border-color:#f7d4d0; }
-.alert-primary{ background:#eef2ff; border-color:#dbe1ff; }
-
-/* ===== OFFCANVAS (detalle) ===== */
-.offcanvas-pill{
-  display:inline-flex; align-items:center; gap:.35rem;
-  background:var(--soft); border:1px solid #e8e6f2; color:#333; padding:.2rem .5rem; border-radius:999px; font-size:.8rem;
-}
-.factor-row{
-  display:grid; grid-template-columns: 1fr auto; align-items:center;
-  gap:.5rem; padding:.4rem .6rem; border:1px solid #eee; border-radius:.5rem; margin:.35rem 0; background:#fff;
-}
-
-/* Tiles por factor relacionados con hojas avanzadas */
-.adv-tile{
-  display:flex; flex-direction:column; gap:.25rem; padding:.6rem .7rem;
-  border:1px solid #eee; border-radius:.5rem; background:#fff;
-}
-.adv-tile .h-name{ font-weight:700; color:#333; }
-.adv-tile .h-sheet{ font-size:.8rem; color:var(--muted); }
-.adv-tile .h-metric{ font-size:.85rem; }
-
-/* Destacados por severidad */
-.hl-ok   { background: linear-gradient(0deg, rgba(46,204,113,.06), rgba(46,204,113,.06)); border-color: rgba(46,204,113,.25); }
-.hl-warn { background: linear-gradient(0deg, rgba(241,196,15,.08), rgba(241,196,15,.08)); border-color: rgba(241,196,15,.25); }
-.hl-risk { background: linear-gradient(0deg, rgba(231,76,60,.08), rgba(231,76,60,.08)); border-color: rgba(231,76,60,.28); }
-
-.m-dot{ width:.6rem; height:.6rem; border-radius:50%; display:inline-block; }
-.m-ok   { background:var(--ok); }
-.m-warn { background:var(--warn); }
-.m-risk { background:var(--risk); }
-
-/* ===== PANEL DERECHO: Cuestionarios por área ===== */
-.areas-list .area-block{
-  border:1px solid #eee; border-radius:.75rem; padding:.75rem; background:#fff; margin-bottom:.75rem;
-}
-.areas-list .area-head{
-  display:flex; justify-content:space-between; align-items:center; gap:.5rem; flex-wrap:wrap;
-}
-.status-pill{
-  display:inline-flex; align-items:center; gap:.35rem; border-radius:999px; padding:.15rem .5rem; font-size:.75rem; font-weight:600;
-  border:1px solid transparent;
-}
-.status-vigente{ background:rgba(46,204,113,.12); color:var(--ok); border-color:rgba(46,204,113,.25); }
-.status-vencido{ background:rgba(231,76,60,.11); color:var(--risk); border-color:rgba(231,76,60,.25); }
-.status-proximo{ background:rgba(241,196,15,.12); color:var(--warn); border-color:rgba(241,196,15,.25); }
-
-.areas-list .puesto-btn{
-  width:100%; text-align:left; background:#faf9ff; border:1px solid #eee; border-radius:.5rem; padding:.55rem .7rem;
-  display:flex; justify-content:space-between; align-items:center; gap:.5rem;
-}
-.areas-list .puesto-btn:hover{ background:#f3f1ff; }
-.areas-list .person-row{
-  display:flex; justify-content:space-between; align-items:center; padding:.4rem .25rem; border-bottom:1px dashed #eee; font-size:.95rem;
-}
-.areas-list .person-row:last-child{ border-bottom:0; }
-
-/* ===== Ajustes varios ===== */
-@media (max-width: 575.98px){
-  .card-ficha .title{ font-size:1.05rem; }
-  .chip{ font-size:.78rem; }
-  .factor-row{ grid-template-columns: 1fr; }
-}
-
-/* ===== Panel derecho: Cuestionarios por Área (alternativa) ===== */
-.areas-list .area-block + .area-block{ margin-top: 1rem; }
-
-.area-head h6{ color: var(--ist-purple); }
 .pill{
-  display:inline-block; min-width: 2rem; text-align:center;
-  padding:.15rem .5rem; border-radius: 999px; font-weight:600;
-  font-size:.75rem; border:1px solid transparent;
+  display:inline-flex;align-items:center;gap:.4rem;
+  padding:.35rem .6rem;border-radius:10px;font-size:.85rem;background:#f8fafc;border:1px solid var(--border);
 }
-.pill-ok   { background:#e6f7ec; color:#1e7a39; border-color:#bfe7cc; }
-.pill-warn { background:#fff5d9; color:#8a6a00; border-color:#ffe39a; }
-.pill-bad  { background:#ffe3e6; color:#a1122a; border-color:#ffb8c1; }
-.pill-na   { background:#f1f1f5; color:#6b6b7a; border-color:#e2e2ea; }
 
-.person-item{
-  display:flex; align-items:center; justify-content:space-between;
-  gap:.75rem; padding:.35rem .5rem; border-bottom:1px dashed #eee;
+/* Estado textual dentro de la tarjeta */
+.status-pill{
+  display:inline-flex;align-items:center;gap:.35rem;
+  padding:.35rem .65rem;border-radius:999px;font-weight:600;font-size:.9rem;border:1px solid transparent;
 }
-.person-item:last-child{ border-bottom:0; }
-.person-main{ min-width:0; }
-.person-main .fw-semibold{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.person-meta{ white-space:nowrap; display:flex; flex-direction:column; align-items:flex-end; gap:.15rem; }
+.status-ok{color:#065f46;background:#ecfdf5;border-color:#a7f3d0;}
+.status-warn{color:#7c2d12;background:#fff7ed;border-color:#fed7aa;}
+.status-bad{color:#7f1d1d;background:#fef2f2;border-color:#fecaca;}
+.status-unk{color:#334155;background:#f1f5f9;border-color:#e2e8f0;}
 
-@media (max-width: 480px){
-  .person-item{ flex-direction:column; align-items:flex-start; }
-  .person-meta{ align-items:flex-start; }
+/* ===== Factores dentro de la tarjeta ===== */
+.factors-wrap{
+  display:flex;flex-wrap:wrap;gap:.45rem;
+}
+.factor-chip{
+  display:inline-flex;align-items:center;gap:.4rem;
+  padding:.35rem .55rem;border-radius:999px;font-weight:600;font-size:.82rem;
+  border:1px solid transparent; background:#f8fafc; color:#334155;
+}
+.factor-chip .state{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:1.25rem;height:1.25rem;border-radius:50%;font-size:.72rem;font-weight:800;
+  color:#fff;
+}
+
+/* Colores por factor */
+.f-rep{ --accent:var(--rep);  --bg:var(--rep-bg);  }
+.f-post{--accent:var(--post); --bg:var(--post-bg); }
+.f-lev{ --accent:var(--lev);  --bg:var(--lev-bg);  }
+.f-push{--accent:var(--push); --bg:var(--push-bg); }
+.f-pcts{--accent:var(--pcts); --bg:var(--pcts-bg); }
+.f-vcc{ --accent:var(--vcc);  --bg:var(--vcc-bg);  }
+.f-vhb{ --accent:var(--vhb);  --bg:var(--vhb-bg);  }
+
+/* Variantes SI/NO */
+.factor-chip.is-yes{
+  background:var(--bg);
+  border-color:color-mix(in oklab, var(--accent) 40%, white);
+  color:color-mix(in oklab, var(--accent) 85%, black);
+}
+.factor-chip.is-yes .state{ background:var(--accent); }
+
+.factor-chip.is-no{
+  background:#fff;
+  border-color:#e5e7eb;
+  color:#64748b;
+}
+.factor-chip.is-no .state{ background:#94a3b8; }
+
+/* ===== Barra inferior (paginación “slide”) ===== */
+.bottom-sticky{
+  position:sticky;bottom:0;z-index:5;
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:12px;
+}
+
+/* ===== Modal fullscreen (detalle) ===== */
+.modal-fullscreen .modal-header{border-bottom:1px solid var(--border);}
+.modal-fullscreen .modal-footer{border-top:1px solid var(--border);}
+#detailBody{display:grid;gap:1rem;}
+@media (min-width:992px){ #detailBody{grid-template-columns:1fr;} }
+
+.detail-card{
+  border:1px solid var(--border);border-radius:12px;background:#fff;padding:1rem;
+}
+
+/* Tabla legible con thead sticky */
+.table-like{
+  border:1px solid var(--border);border-radius:12px;overflow:auto;background:#fff;
+}
+.table-like table{width:100%;border-collapse:separate;border-spacing:0;}
+.table-like th,.table-like td{padding:.65rem .8rem;border-bottom:1px solid #f1f5f9;vertical-align:top;}
+.table-like thead th{
+  position:sticky;top:0;background:#f8fafc;z-index:1;font-weight:700;
+}
+.table-like tbody tr:nth-child(odd) td{background:#fcfcff;}
+
+/* ===== Panel derecho: Cuestionarios por Área ===== */
+#areasList .area-block{
+  border:1px solid #eee;border-radius:.9rem;background:#fff;padding:.85rem;margin-bottom:.9rem;
+}
+#areasList .area-head{
+  display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap;
+}
+#areasList .area-head h6{color:var(--ist-purple);margin:0;}
+#areasList .puesto-btn{
+  width:100%;text-align:left;background:#faf9ff;border:1px solid #eee;border-radius:.6rem;
+  padding:.6rem .75rem;display:flex;justify-content:space-between;align-items:center;gap:.5rem;
+}
+#areasList .puesto-btn:hover{background:#f3f1ff;}
+#areasList .person-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:.45rem .25rem;border-bottom:1px dashed #eee;font-size:.95rem;
+}
+#areasList .person-row:last-child{border-bottom:0;}
+.status-vigente{background:rgba(22,163,74,.12);color:var(--ok);border:1px solid rgba(22,163,74,.25);}
+.status-vencido{background:rgba(220,38,38,.12);color:var(--risk);border:1px solid rgba(220,38,38,.25);}
+.status-proximo{background:rgba(217,119,6,.12);color:var(--warn);border:1px solid rgba(217,119,6,.25);}
+
+/* ===== Marcas pequeñas ===== */
+.m-dot{width:.6rem;height:.6rem;border-radius:50%;display:inline-block;}
+.m-ok{background:var(--ok);} .m-warn{background:var(--warn);} .m-risk{background:var(--risk);}
+
+/* ===== Ajustes responsivos ===== */
+@media (max-width: 575.98px){
+  .card-ficha .title{font-size:1.05rem;}
+  .chip{font-size:.78rem;}
 }

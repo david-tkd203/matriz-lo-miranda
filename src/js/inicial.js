@@ -1,7 +1,7 @@
 /* inicial.js (paginación “slide”, 1 tarjeta por fila, modal fullscreen)
-   - Lee HOJA INICIAL (B..Q) y oculta “0” en Área/Puesto
+   - Lee HOJA INICIAL (B..Q) y oculta “0” en Área/Puesto/Tarea
    - Une con hoja “Movimiento repetitivo” y muestra estado basado en columnas P y W
-   - Card: muestra estado (badge). Modal fullscreen: detalles P y W + resto de preguntas/respuestas disponibles.
+   - Card: estado (badge) + FACTORES (chips J..P). Modal: detalles P y W + preguntas/respuestas.
 */
 
 const COLS = {
@@ -24,17 +24,17 @@ const COLS = {
 };
 
 const RISKS = [
-  { key: 'J', label: COLS.J, hoja: 'Mov. Rep.' },
-  { key: 'K', label: COLS.K, hoja: 'Postura estatica' },
-  { key: 'L', label: COLS.L, hoja: 'MMC Levantamiento-Descenso' },
-  { key: 'M', label: COLS.M, hoja: 'MMC Empuje-Arrastre' },
-  { key: 'N', label: COLS.N, hoja: 'Manejo manual PCTS' },
-  { key: 'O', label: COLS.O, hoja: 'Vibración Cuerpo completo' },
-  { key: 'P', label: COLS.P, hoja: 'Vibración Mano-Brazo' },
+  { key: 'J', label: COLS.J, hoja: 'Mov. Rep.', css: 'f-rep' },
+  { key: 'K', label: COLS.K, hoja: 'Postura estatica', css: 'f-post' },
+  { key: 'L', label: COLS.L, hoja: 'MMC Levantamiento-Descenso', css: 'f-lev' },
+  { key: 'M', label: COLS.M, hoja: 'MMC Empuje-Arrastre', css: 'f-push' },
+  { key: 'N', label: COLS.N, hoja: 'Manejo manual PCTS', css: 'f-pcts' },
+  { key: 'O', label: COLS.O, hoja: 'Vibración Cuerpo completo', css: 'f-vcc' },
+  { key: 'P', label: COLS.P, hoja: 'Vibración Mano-Brazo', css: 'f-vhb' },
 ];
 
 let RAW_ROWS = [];
-let MOVREP_MAP = Object.create(null); // key -> {P, W, rowObj, headers}
+let MOVREP_MAP = Object.create(null); // key -> {P, W, rowObj}
 let MOVREP_HEADERS = [];
 
 let FILTERS = { area: "", puesto: "", tarea: "", factorKey: "", factorState: "" };
@@ -227,14 +227,12 @@ function processWorkbook(arrayBuffer){
         const headers = rows2d[0].map(h => String(h||""));
         MOVREP_HEADERS = headers;
 
-        // Intentamos ubicar índices de Área/Puesto/Tarea por nombre; si no, asumimos B,C,D
         const idxArea  = findIndexInsensitive(headers, ["area","área"]) ?? 1;
         const idxPuesto= findIndexInsensitive(headers, ["puesto"]) ?? 2;
         const idxTarea = findIndexInsensitive(headers, ["tarea","tareas"]) ?? 3;
 
-        // Columnas P (letra 16) y W (letra 22) por requerimiento
-        const idxP = 16; // A=0
-        const idxW = 22;
+        const idxP = 16; // Columna P (0-based A=0)
+        const idxW = 22; // Columna W
 
         for(let i=1;i<rows2d.length;i++){
           const r = rows2d[i] || [];
@@ -367,7 +365,6 @@ function classifyMovRep(p, w){
   const t = toLowerNoAccents(s);
   if(!t.trim()) return { cls:"status-unk", label:"Sin dato" };
 
-  // Heurística: acepta/precaución/no aceptable
   if(t.includes("no acept") || t.includes("alto") || t.includes("riesgo alto") || t.includes("critico") || t.includes("crítico"))
     return { cls:"status-bad", label:"No aceptable" };
   if(t.includes("moderad") || t.includes("medio") || t.includes("precauc") || t.includes("mejorable"))
@@ -375,6 +372,26 @@ function classifyMovRep(p, w){
   if(t.includes("acept") || t.includes("bajo") || t.includes("sin riesgo"))
     return { cls:"status-ok", label:"Aceptable" };
   return { cls:"status-unk", label:"Revisar" };
+}
+
+/* ======= Chips de factores ======= */
+function factorChips(r){
+  const parts = [];
+  for(const rf of RISKS){
+    const raw = (r[rf.key]||"").toString().trim().toUpperCase();
+    if(raw !== "SI" && raw !== "NO") continue; // sólo mostramos cuando hay dato claro
+    const isYes = raw === "SI";
+    const cls = `factor-chip ${rf.css} ${isYes ? 'is-yes' : 'is-no'}`;
+    const ico = isYes ? '<i class="bi bi-check-circle-fill"></i>' : '<i class="bi bi-dash-circle-fill"></i>';
+    const st  = `<span class="state">${isYes ? 'S' : 'N'}</span>`;
+    parts.push(`<span class="${cls}" title="${escapeHtml(rf.label)}">${st}${ico} <span>${escapeHtml(rf.label)}</span></span>`);
+  }
+  if(!parts.length){
+    return `<span class="factor-chip is-no" title="Sin factores con SI/NO definidos">
+      <span class="state">-</span><i class="bi bi-info-circle"></i> Sin factores definidos
+    </span>`;
+  }
+  return parts.join("");
 }
 
 /* ======= HTML Tarjeta + Modal ======= */
@@ -399,13 +416,21 @@ function cardHtml(r, idx){
           <div class="mb-1"><i class="bi bi-person-badge"></i> <strong>Puesto:</strong> ${escapeHtml(r.C || "-")}</div>
           <div class="mb-2"><i class="bi bi-list-check"></i> <strong>Tareas:</strong> ${escapeHtml(r.D || "-")}</div>
 
-          <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+          <div class="d-flex flex-wrap align-items-center gap-2 mt-2 mb-2">
             <span class="status-pill ${status.cls}" title="Estado según hoja Movimiento repetitivo (P/W)">
               <i class="bi bi-activity"></i> ${status.label}
             </span>
             ${mov ? `<span class="pill"><strong>P:</strong> ${escapeHtml(mov.P??"")}</span>
-                     <span class="pill"><strong>W:</strong> ${escapeHtml(mov.W??"")}</span>` 
+                     <span class="pill"><strong>W:</strong> ${escapeHtml(mov.W??"")}</span>`
                  : `<span class="pill">Hoja Mov. repetitivo: sin coincidencia</span>`}
+          </div>
+
+          <!-- FACTORES (J..P) -->
+          <div class="mb-2">
+            <div class="small text-muted mb-1"><i class="bi bi-exclamation-octagon"></i> Factores</div>
+            <div class="factors-wrap">
+              ${factorChips(r)}
+            </div>
           </div>
 
           <hr>
@@ -448,6 +473,11 @@ function openDetail(r){
                     <span class="pill"><strong>W:</strong> ${escapeHtml(mov.W??"")}</span>
                    </div>` : ``}
         </div>
+      </div>
+      <!-- Repite factores también en el modal -->
+      <div class="mt-3">
+        <div class="small text-muted mb-1"><i class="bi bi-exclamation-octagon"></i> Factores</div>
+        <div class="factors-wrap">${factorChips(r)}</div>
       </div>
     </div>
   `;
