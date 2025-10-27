@@ -280,7 +280,7 @@ function cardHtml(r, idx){
 
           <hr>
           <div class="small"><strong>Factores (J–P):</strong></div>
-          <div class="d-flex flex-wrap gap-1 my-1">${badges}</div>
+          <div class="factors-wrap">${badges}</div>
 
           <div class="alert ${resultClass} mt-2 mb-0" role="alert">
             <i class="bi bi-clipboard-check"></i> <strong>Resultado:</strong> ${escapeHtml(r.Q||"-")}
