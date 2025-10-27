@@ -1,5 +1,5 @@
-// 3 filas por sección (no tabla): 12m, Incap 12m + dolor, Incap 7d + dolor
-// Mantiene cache local y estructura de columnas original (…__12m, …__Incap, …__Dolor12m, …__7d, …__Dolor7d)
+// 3 filas por zona: 12m, Incap 12m + dolor, Incap 7d + dolor
+// Añadido: títulos encima, separadores notorios, ticks con NÚMEROS IMPARES (1,3,5,7,9) y atajos clicables.
 
 const ZONAS = [
   "Cuello","Hombro Derecho","Hombro Izquierdo","Codo/antebrazo Derecho","Codo/antebrazo Izquierdo",
@@ -7,12 +7,12 @@ const ZONAS = [
   "Caderas/nalgas/muslos","Rodillas (una o ambas)","Pies/tobillos (uno o ambos)"
 ];
 
-const CACHE_KEY_RESP = "RESPUESTAS_CACHE_V1";
+const CACHE_KEY_RESP   = "RESPUESTAS_CACHE_V1";
 const CACHE_KEY_PARAMS = "PARAMS_CACHE_V1";
 
 let HEADERS_RESP = [];
-let ROWS_RESP = [];
-let PARAMS = [];
+let ROWS_RESP    = [];
+let PARAMS       = [];
 
 const FACE_STEPS = [
   {v:0,  emoji:"😀", label:"Sin dolor"},
@@ -30,9 +30,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   await tryLoadExcel();
   fillAreas();
   wireForm();
+
+  // Delegación global: chips impares
+  document.addEventListener("click", onOddChipClick);
 });
 
-function byId(id){ return document.getElementById(id); }
+const byId = (id) => document.getElementById(id);
 
 /* ===== Fecha ===== */
 function initDateToday(id){
@@ -41,40 +44,43 @@ function initDateToday(id){
   el.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
-/* ===== Render de secciones ===== */
+/* ===== Render Zonas ===== */
 function renderZones(){
   const wrap = byId("zonesWrap");
-  wrap.innerHTML = ZONAS.map(z => sectionHtml(z)).join("");
+  wrap.innerHTML = ZONAS.map((z,i) => sectionHtml(z, i+1)).join("");
   wireSectionLogic();
-  initSliderFill(); // color de sliders
+  initSliderFill();
 }
 
-function sectionHtml(z){
+function sectionHtml(z, idx){
   const id12 = key(z,"12m");
   const idIn = key(z,"Incap");
   const idD12 = key(z,"Dolor12m");
-  const id7  = key(z,"7d");        // aquí usamos “7d” como “Incapacidad 7 días”
-  const idD7  = key(z,"Dolor7d");
+  const id7  = key(z,"7d");
+  const idD7 = key(z,"Dolor7d");
+
   return `
     <section class="zone" data-zone="${z}">
       <div class="zone-header">
+        <div class="zone-index">#${idx}</div>
         <h6 class="zone-title">${z}</h6>
       </div>
+
       <div class="zone-body">
-        <!-- Fila 1: Zona + 12 meses -->
-        <div class="zone-row">
-          <div class="zone-label"><i class="bi bi-calendar3"></i> Molestias en los últimos 12 meses</div>
-          <div>
+        <!-- Paso 1 -->
+        <div class="zone-row stacked">
+          <div class="row-title"><i class="bi bi-calendar3"></i> Molestias en los últimos 12 meses</div>
+          <div class="row-content">
             <select class="form-select form-select-sm" id="${id12}">
               <option>NO</option><option>SI</option>
             </select>
           </div>
         </div>
 
-        <!-- Fila 2: Incapacidad 12 m + dolor 12 m -->
-        <div class="zone-row">
-          <div class="zone-label"><i class="bi bi-person-exclamation"></i> Incapacidad (12 meses)</div>
-          <div class="d-grid gap-2">
+        <!-- Paso 2 -->
+        <div class="zone-row stacked">
+          <div class="row-title"><i class="bi bi-person-exclamation"></i> Incapacidad (12 meses) e intensidad de dolor</div>
+          <div class="row-content d-grid gap-2">
             <div>
               <select class="form-select form-select-sm" id="${idIn}" disabled>
                 <option></option><option>NO</option><option>SI</option>
@@ -82,19 +88,20 @@ function sectionHtml(z){
             </div>
             <div>
               <div class="slider-wrap">
-                <input type="range" min="0" max="10" step="1" value="0" id="${idD12}" disabled>
+                <input type="range" min="0" max="10" step="1" value="0" id="${idD12}" disabled aria-label="Dolor 12 meses (0 a 10)">
                 <span class="value-badge" id="${idD12}_out">0</span>
               </div>
-              <div class="ticks"><span>0</span><span>5</span><span>10</span></div>
+              ${ticksOddHtml()}
+              ${oddChipsHtml(idD12)}
               ${facesHtml(idD12)}
             </div>
           </div>
         </div>
 
-        <!-- Fila 3: Incapacidad 7 d + dolor 7 d -->
-        <div class="zone-row">
-          <div class="zone-label"><i class="bi bi-activity"></i> Incapacidad (últimos 7 días)</div>
-          <div class="d-grid gap-2">
+        <!-- Paso 3 -->
+        <div class="zone-row stacked">
+          <div class="row-title"><i class="bi bi-activity"></i> Incapacidad (últimos 7 días) e intensidad de dolor</div>
+          <div class="row-content d-grid gap-2">
             <div>
               <select class="form-select form-select-sm" id="${id7}" disabled>
                 <option></option><option>NO</option><option>SI</option>
@@ -102,10 +109,11 @@ function sectionHtml(z){
             </div>
             <div>
               <div class="slider-wrap">
-                <input type="range" min="0" max="10" step="1" value="0" id="${idD7}" disabled>
+                <input type="range" min="0" max="10" step="1" value="0" id="${idD7}" disabled aria-label="Dolor 7 días (0 a 10)">
                 <span class="value-badge" id="${idD7}_out">0</span>
               </div>
-              <div class="ticks"><span>0</span><span>5</span><span>10</span></div>
+              ${ticksOddHtml()}
+              ${oddChipsHtml(idD7)}
               ${facesHtml(idD7)}
             </div>
           </div>
@@ -128,16 +136,37 @@ function facesHtml(rangeId){
   `;
 }
 
+// Escala con impares resaltados (y 0/10 visibles)
+function ticksOddHtml(){
+  const spans = [];
+  for(let i=0;i<=10;i++){
+    const cls = (i % 2 === 1 || i===0 || i===10) ? 'tick show' : 'tick';
+    const label = (i % 2 === 1 || i===0 || i===10) ? i : '';
+    spans.push(`<span class="${cls}" aria-hidden="true">${label}</span>`);
+  }
+  return `<div class="ticks ticks-odd" role="presentation">${spans.join("")}</div>`;
+}
+
+// Atajos para 1,3,5,7,9
+function oddChipsHtml(rangeId){
+  const values = [1,3,5,7,9];
+  return `
+    <div class="odd-chips" data-target-range="${rangeId}">
+      ${values.map(v => `<button type="button" class="odd-chip" data-value="${v}" title="Seleccionar ${v}">${v}</button>`).join("")}
+    </div>
+  `;
+}
+
 function key(z,suf){ return `${z}__${suf}`; }
 
-/* ===== Lógica de cada sección ===== */
+/* ===== Lógica por zona ===== */
 function wireSectionLogic(){
   for(const z of ZONAS){
-    const sel12 = byId(key(z,"12m"));
-    const selIn = byId(key(z,"Incap"));
+    const sel12  = byId(key(z,"12m"));
+    const selIn  = byId(key(z,"Incap"));
     const rngD12 = byId(key(z,"Dolor12m"));
-    const sel7  = byId(key(z,"7d"));
-    const rngD7 = byId(key(z,"Dolor7d"));
+    const sel7   = byId(key(z,"7d"));
+    const rngD7  = byId(key(z,"Dolor7d"));
 
     const applyState = () => {
       const si12 = (sel12.value === "SI");
@@ -148,7 +177,6 @@ function wireSectionLogic(){
         rngD7.disabled = true; resetRange(rngD7); setFacesDisabled(rngD7.id, true);
         return;
       }
-      // 12m = SI
       selIn.disabled = false;
       const incap12 = (selIn.value === "SI");
       if(!incap12){
@@ -157,7 +185,6 @@ function wireSectionLogic(){
         rngD7.disabled = true; resetRange(rngD7); setFacesDisabled(rngD7.id, true);
         return;
       }
-      // incap 12m = SI
       rngD12.disabled = false; setFacesDisabled(rngD12.id, false);
       sel7.disabled = false;
       const incap7 = (sel7.value === "SI");
@@ -167,30 +194,40 @@ function wireSectionLogic(){
     };
 
     sel12.addEventListener("change", applyState);
-    selIn.addEventListener("change", applyState);
-    sel7 .addEventListener("change", applyState);
+    selIn .addEventListener("change", applyState);
+    sel7  .addEventListener("change", applyState);
 
-    // sliders / caritas
     [rngD12, rngD7].forEach(r => {
       r.addEventListener("input", () => { updateBadge(r); paintFill(r); syncFaces(r); });
       updateBadge(r); paintFill(r); syncFaces(r);
     });
 
-    // caritas click
-    const container = document.querySelector(`.faces[data-target="${CSS.escape(rngD12.id)}"]`).parentElement.parentElement;
+    // Caritas clic
     document.getElementById(rngD12.id).closest('.zone-row').addEventListener("click", onFacesClick);
-    document.getElementById(rngD7.id).closest('.zone-row').addEventListener("click", onFacesClick);
+    document.getElementById(rngD7.id ).closest('.zone-row').addEventListener("click", onFacesClick);
 
-    applyState(); // estado inicial
+    applyState();
   }
 }
 
 function onFacesClick(ev){
   const btn = ev.target.closest(".face-btn");
   if(!btn) return;
-  const id = btn.dataset.targetRange;
+  const id  = btn.dataset.targetRange;
   const rng = byId(id); if(!rng || rng.disabled) return;
   rng.value = btn.dataset.value;
+  rng.dispatchEvent(new Event("input",{bubbles:true}));
+}
+
+// Atajos impares
+function onOddChipClick(ev){
+  const chip = ev.target.closest(".odd-chip");
+  if(!chip) return;
+  const wrap = chip.closest(".odd-chips");
+  const id   = wrap?.dataset?.targetRange;
+  const rng  = id ? byId(id) : null;
+  if(!rng || rng.disabled) return;
+  rng.value = chip.dataset.value;
   rng.dispatchEvent(new Event("input",{bubbles:true}));
 }
 
@@ -235,13 +272,16 @@ function paintFill(r){
 /* ===== Colores por banda ===== */
 function colorFor(v){ if(v<=3) return '#2ecc71'; if(v<=6) return '#f1c40f'; if(v<=8) return '#e67e22'; return '#e74c3c'; }
 function bandLabel(v){ if(v<=3) return 'Leve (0–3)'; if(v<=6) return 'Moderado (4–6)'; if(v<=8) return 'Intenso (7–8)'; return 'Severo (9–10)'; }
-function alpha(hex,a){ const h=hex.replace('#',''); const n=parseInt(h.length===3?h.split('').map(c=>c+c).join(''):h,16);
-  const r=(n>>16)&255, g=(n>>8)&255, b=n&255; return `rgba(${r}, ${g}, ${b}, ${a})`; }
+function alpha(hex,a){
+  const h=hex.replace('#','');
+  const n=parseInt(h.length===3?h.split('').map(c=>c+c).join(''):h,16);
+  const r=(n>>16)&255, g=(n>>8)&255, b=n&255; return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
 
-/* ===== Cache / Excel (hidrata si existe) ===== */
+/* ===== Cache / Excel ===== */
 function loadFromCache(){
   try{
-    const R = JSON.parse(localStorage.getItem(CACHE_KEY_RESP) || "null");
+    const R = JSON.parse(localStorage.getItem(CACHE_KEY_RESP)   || "null");
     const P = JSON.parse(localStorage.getItem(CACHE_KEY_PARAMS) || "null");
     if(R && Array.isArray(R.headers) && Array.isArray(R.rows)){ HEADERS_RESP = R.headers.slice(); ROWS_RESP = R.rows.slice(); }
     if(P && Array.isArray(P)){ PARAMS = P.slice(); }
@@ -254,7 +294,7 @@ async function tryLoadExcel(){
     const res = await fetch(url, { cache:"no-store" });
     if(!res.ok) return;
     const buf = await res.arrayBuffer();
-    const wb = XLSX.read(buf, { type:"array" });
+    const wb  = XLSX.read(buf, { type:"array" });
 
     const wsResp = wb.Sheets["Respuestas"];
     if(wsResp){
@@ -296,7 +336,7 @@ function fillAreas(){
   sel.innerHTML = `<option value="">Seleccione...</option>` + ordered.map(a => `<option>${a}</option>`).join("");
 }
 
-/* ===== Guardado (en memoria) ===== */
+/* ===== Guardado ===== */
 function wireForm(){
   const form = byId("formNordico");
   form.addEventListener("submit", onSubmit);
@@ -309,7 +349,10 @@ function wireForm(){
 function onSubmit(evt){
   evt.preventDefault();
   const row = buildRowFromForm();
-  if(!row.Area || !row.Nombre_Trabajador || !row.Sexo){ alert("Área, Nombre y Sexo son obligatorios."); return; }
+  if(!row.Area || !row.Nombre_Trabajador || !row.Sexo){
+    alert("Área, Nombre y Sexo son obligatorios.");
+    return;
+  }
 
   if(HEADERS_RESP.length===0) HEADERS_RESP = defaultHeaders();
   const maxId = ROWS_RESP.reduce((m,r)=>Math.max(m, parseInt(r.ID||0,10)||0), 0);
@@ -334,7 +377,7 @@ function onSubmit(evt){
 
 function persistCache(){
   try{
-    localStorage.setItem(CACHE_KEY_RESP, JSON.stringify({ headers:HEADERS_RESP, rows:ROWS_RESP, ts:Date.now() }));
+    localStorage.setItem(CACHE_KEY_RESP,   JSON.stringify({ headers:HEADERS_RESP, rows:ROWS_RESP, ts:Date.now() }));
     localStorage.setItem(CACHE_KEY_PARAMS, JSON.stringify(PARAMS));
   }catch(_){}
 }
@@ -354,7 +397,7 @@ function buildRowFromForm(){
     const v12 = byId(key(z,"12m")).value;
     const vIn = byId(key(z,"Incap")).value;
     const vD12 = byId(key(z,"Dolor12m")).value;
-    const v7  = byId(key(z,"7d")).value;         // Incapacidad 7 días
+    const v7  = byId(key(z,"7d")).value;
     const vD7 = byId(key(z,"Dolor7d")).value;
 
     if(v12 === "NO"){
@@ -375,7 +418,9 @@ function buildRowFromForm(){
         }else if(v7 === "NO"){
           row[`${z}__7d`] = "NO";
           row[`${z}__Dolor7d`] = "";
-        }else{ row[`${z}__7d`] = ""; row[`${z}__Dolor7d`] = ""; }
+        }else{
+          row[`${z}__7d`] = ""; row[`${z}__Dolor7d`] = "";
+        }
       }else{
         row[`${z}__Dolor12m`] = "";
         row[`${z}__7d`] = "";
