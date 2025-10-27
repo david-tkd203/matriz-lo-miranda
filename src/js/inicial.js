@@ -1,41 +1,52 @@
-/* inicial.js (v. “Mov. Rep. con modal fullscreen + slide por página + 1 tarjeta/fila”)
-   - Lee hoja INICIAL (B..Q) y hoja "Mov. Rep."
-   - Une por (Área|Puesto|Tareas)
-   - Tarjeta muestra estado derivado de columnas P y W de Mov. Rep.
-   - Modal fullscreen con P/W y preguntas/respuestas (todas las columnas con texto)
-   - Paginación con animación “slide”
-   - Omite filas con Área o Puesto = "0"
+/* inicial.js (relaciones con hojas + filtro por factor + detalle enriquecido + sincronía panel derecho)
+   - Lee HOJA INICIAL (fila 3, columnas B..Q)
+   - Guarda workbook (WB) para consultar hojas relacionadas al abrir el detalle
+   - Filtros en cascada + por factor/estado
+   - Offcanvas: busca filas matching (Área/Puesto/Tareas) en hojas por factor y colorea estado
+   - Expone getMatrizFilters() y dispara evento 'matrizFiltersChanged' para que el panel derecho se sincronice
 */
 
 const COLS = {
-  B: "Área", C: "Puesto de trabajo", D: "Tareas del puesto de trabajo",
-  E: "Horario de funcionamiento", F: "Horas extras POR DIA", G: "Horas extras POR SEMANA",
-  H: "N° Trabajadores Expuestos HOMBRE", I: "N° Trabajadores Expuestos MUJER",
-  J: "Trabajo repetitivo de miembros superiores.", K: "Postura de trabajo estática",
-  L: "MMC Levantamiento/Descenso", M: "MMC Empuje/Arrastre", N: "Manejo manual de pacientes / personas",
-  O: "Vibración de cuerpo completo", P: "Vibración segmento mano – brazo", Q: "Resultado identificación inicial",
+  B: "Área",
+  C: "Puesto de trabajo",
+  D: "Tareas del puesto de trabajo",
+  E: "Horario de funcionamiento",
+  F: "Horas extras POR DIA",
+  G: "Horas extras POR SEMANA",
+  H: "N° Trabajadores Expuestos HOMBRE",
+  I: "N° Trabajadores Expuestos MUJER",
+  J: "Trabajo repetitivo de miembros superiores.",
+  K: "Postura de trabajo estática",
+  L: "MMC Levantamiento/Descenso",
+  M: "MMC Empuje/Arrastre",
+  N: "Manejo manual de pacientes / personas",
+  O: "Vibración de cuerpo completo",
+  P: "Vibración segmento mano – brazo",
+  Q: "Resultado identificación inicial",
 };
 
-// Estado de la UI / datos
-let RAW_ROWS = [];        // Hoja INICIAL
-let MOVREP_INDEX = new Map(); // key -> { rowObj, headers, valuesByCol, P, W }
-let FILTERS = { area:"", puesto:"", tarea:"" };
-let STATE = { page:1, perPage:10, pageMax:1, lastPage:1 };
+const RISKS = [
+  { key:'J', label:COLS.J, hoja:'Mov. Rep.' },
+  { key:'K', label:COLS.K, hoja:'Postura estatica' },
+  { key:'L', label:COLS.L, hoja:'MMC Levantamiento-Descenso' },
+  { key:'M', label:COLS.M, hoja:'MMC Empuje-Arrastre' },
+  { key:'N', label:COLS.N, hoja:'Manejo manual PCTS' },
+  { key:'O', label:COLS.O, hoja:'Vibración Cuerpo completo' },
+  { key:'P', label:COLS.P, hoja:'Vibración Mano-Brazo' },
+];
 
-const el = (id)=>document.getElementById(id);
+let RAW_ROWS = [];
+let FILTERS = { area:"", puesto:"", tarea:"", factorKey:"", factorState:"" };
 
-/* ===== Helpers ===== */
-function isZeroish(v){
-  if(v===0) return true;
-  const s = String(v??"").trim();
-  return /^0(\.0+)?$/.test(s);
-}
-function escapeHtml(str){ return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[s]); }
-function norm(s){ return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim(); }
-function kAreaPuestoTarea(a,p,t){ return `${norm(a)}|${norm(p)}|${norm(t)}`; }
-function uniqueSorted(arr){ return [...new Set(arr.filter(v => v && String(v).trim() !== ""))].sort((a,b)=> String(a).localeCompare(String(b))); }
+// Guardamos workbook y un mapa de hojas para detalle
+let WB = null;
+let WS_MAP = {}; // nombreNormalizado -> worksheet
 
-/* ===== Carga ===== */
+const el = (id) => document.getElementById(id);
+const norm = (s) => String(s||"").normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,'').trim();
+
+window.getMatrizFilters = () => ({...FILTERS}); // para sincronía con panel derecho
+
 document.addEventListener("DOMContentLoaded", () => {
   attemptFetchDefault();
   wireUI();
@@ -50,48 +61,55 @@ function wireUI(){
     FILTERS.puesto = ""; el("filterPuesto").value = "";
     populateTarea();
     FILTERS.tarea = ""; el("filterTarea").value = "";
-    STATE.page = 1;
     render();
   });
+
   el("filterPuesto").addEventListener("change", () => {
     FILTERS.puesto = el("filterPuesto").value || "";
-    populateTarea(); FILTERS.tarea = ""; el("filterTarea").value = "";
-    STATE.page = 1;
+    populateTarea();
+    FILTERS.tarea = ""; el("filterTarea").value = "";
     render();
   });
+
   el("filterTarea").addEventListener("change", () => {
     FILTERS.tarea = el("filterTarea").value || "";
-    STATE.page = 1;
     render();
   });
 
-  el("btnReset").addEventListener("click", (e)=>{ e.preventDefault();
-    FILTERS = { area:"", puesto:"", tarea:"" };
-    el("filterArea").value=""; el("filterPuesto").value=""; el("filterTarea").value="";
-    STATE.page=1; render();
+  // Filtro por factor
+  populateFactor();
+  el("filterFactor").addEventListener("change", () => {
+    FILTERS.factorKey = el("filterFactor").value || "";
+    render();
   });
-  el("btnReload").addEventListener("click", attemptFetchDefault);
+  el("filterFactorState").addEventListener("change", () => {
+    FILTERS.factorState = el("filterFactorState").value || "";
+    render();
+  });
 
-  // paginación / slide
-  el("perPage").addEventListener("change", () => { STATE.perPage = parseInt(el("perPage").value,10)||10; STATE.page=1; render(); });
-  el("btnPrev").addEventListener("click", ()=> { if(STATE.page>1){ STATE.lastPage=STATE.page; STATE.page--; render(true); }});
-  el("btnNext").addEventListener("click", ()=> { if(STATE.page<STATE.pageMax){ STATE.lastPage=STATE.page; STATE.page++; render(true); }});
-  el("btnTop").addEventListener("click", ()=> window.scrollTo({top:0, behavior:"smooth"}));
+  // Botones
+  el("btnReset")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    FILTERS = { area:"", puesto:"", tarea:"", factorKey:"", factorState:"" };
+    ["filterArea","filterPuesto","filterTarea","filterFactor","filterFactorState"].forEach(id => { const s=el(id); if(s) s.value=""; });
+    populatePuesto(true); populateTarea(true);
+    render();
+  });
+  el("btnReload")?.addEventListener("click", attemptFetchDefault);
 
-  // abrir modal desde botón de tarjeta (delegación)
-  el("cardsWrap").addEventListener("click", (ev)=>{
-    const btn = ev.target.closest("[data-open-detail]");
-    if(!btn) return;
-    const idx = parseInt(btn.dataset.openDetail,10);
-    const row = CURRENT_ROWS[idx];
-    if(row) openDetail(row);
+  // Abrir offcanvas al clicar card
+  el("cardsWrap").addEventListener("click", (ev) => {
+    const card = ev.target.closest("[data-idx]");
+    if(!card) return;
+    const idx = Number(card.dataset.idx);
+    if(Number.isFinite(idx) && RAW_ROWS[idx]) openDetail(RAW_ROWS[idx]);
   });
 }
 
 async function attemptFetchDefault(){
   if(!window.DEFAULT_XLSX_PATH) return;
   try{
-    const res = await fetch(window.DEFAULT_XLSX_PATH);
+    const res = await fetch(window.DEFAULT_XLSX_PATH, { cache:"no-store" });
     if(!res.ok) throw new Error("Fetch failed");
     const buf = await res.arrayBuffer();
     processWorkbook(buf);
@@ -101,7 +119,8 @@ async function attemptFetchDefault(){
 }
 
 function handleFile(evt){
-  const file = evt.target.files?.[0]; if(!file) return;
+  const file = evt.target.files[0];
+  if(!file) return;
   const reader = new FileReader();
   reader.onload = (e) => processWorkbook(e.target.result);
   reader.readAsArrayBuffer(file);
@@ -111,217 +130,160 @@ function pickInicialSheet(wb){
   const target = (wb.SheetNames || []).find(n => /inicial|inicio/i.test(String(n||"")));
   return target || wb.SheetNames[0];
 }
-function pickMovRepSheet(wb){
-  // nombres frecuentes: "Mov. Rep.", "Movimiento repetitivo", "Mov Rep", etc.
-  const target = (wb.SheetNames || []).find(n => /mov|\brep/i.test(String(n||"")));
-  return target || null;
-}
 
 function processWorkbook(arrayBuffer){
-  const wb = XLSX.read(arrayBuffer, { type:"array" });
+  WB = XLSX.read(arrayBuffer, { type:"array" });
 
-  // ===== Hoja INICIAL (B..Q)
-  const initialSheetName = pickInicialSheet(wb);
-  const ws = wb.Sheets[initialSheetName];
-  RAW_ROWS = [];
-  if(ws && ws['!ref']){
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    for(let r=2; r<=range.e.r; r++){ // desde fila 3
-      const vals = {};
-      const colMap = { B:1,C:2,D:3,E:4,F:5,G:6,H:7,I:8,J:9,K:10,L:11,M:12,N:13,O:14,P:15,Q:16 };
-      for(const [k,c] of Object.entries(colMap)){
-        const addr = XLSX.utils.encode_cell({ r, c });
-        const cell = ws[addr];
-        vals[k] = cell ? (cell.w ?? cell.v) : "";
-        vals[k] = vals[k]==null ? "" : String(vals[k]).trim();
-      }
-      if(!(vals.B || vals.C || vals.D)) continue;
-      if(isZeroish(vals.B) || isZeroish(vals.C)) continue; // omitir falsos positivos cero
-      RAW_ROWS.push(vals);
-    }
+  // Mapa de hojas normalizado
+  WS_MAP = {};
+  (WB.SheetNames||[]).forEach(name => { WS_MAP[norm(name)] = WB.Sheets[name]; });
+
+  const initialSheetName = pickInicialSheet(WB);
+  const ws = WB.Sheets[initialSheetName];
+
+  if(!ws || !ws['!ref']){
+    RAW_ROWS = []; render(); return;
   }
 
-  // ===== Hoja Mov. Rep. (tomamos columnas P y W + Q&A)
-  MOVREP_INDEX = buildMovRepIndex(wb);
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const rows = [];
 
-  populateArea();
-  populatePuesto(true);
-  populateTarea(true);
-  STATE.page = 1;
+  for(let r = 2; r <= range.e.r; r++){ // fila 3 (idx 2)
+    const vals = {};
+    const getCell = (c) => {
+      const cell = ws[XLSX.utils.encode_cell({ r, c })];
+      const v = cell ? (cell.w ?? cell.v) : "";
+      return v == null ? "" : String(v).trim();
+    };
+    const colMap = { B:1,C:2,D:3,E:4,F:5,G:6,H:7,I:8,J:9,K:10,L:11,M:12,N:13,O:14,P:15,Q:16 };
+    for(const [k, idx] of Object.entries(colMap)) vals[k] = getCell(idx);
+
+    if(!(vals.B || vals.C || vals.D)) continue;
+
+    // Normalización SI/NO
+    ['J','K','L','M','N','O','P'].forEach(k => {
+      const up = String(vals[k]||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
+      if(["SI","YES","Y","S"].includes(up)) vals[k] = "SI";
+      else if(["NO","N"].includes(up)) vals[k] = "NO";
+    });
+
+    // Q calculado si falta
+    const allNo = ['J','K','L','M','N','O','P'].every(k => (vals[k]||"").toUpperCase()==="NO");
+    const anyPresent = ['J','K','L','M','N','O','P'].some(k => (vals[k]||"")!=="");
+    vals.Q = vals.Q || (allNo && anyPresent
+      ? "Ausencia total del riesgo, reevaluar cada 3 años con nueva identificación inicial"
+      : "Aplicar identificación avanzada-condición aceptable para cada tipo de factor de riesgo identificado");
+
+    rows.push(vals);
+  }
+
+  RAW_ROWS = rows;
+  populateArea(); populatePuesto(true); populateTarea(true);
   render();
 }
 
-function buildMovRepIndex(wb){
-  const name = pickMovRepSheet(wb);
-  const out = new Map();
-  if(!name) return out;
-  const ws = wb.Sheets[name];
-  if(!ws || !ws['!ref']) return out;
-
-  // 2D para detectar encabezados
-  const rows2D = XLSX.utils.sheet_to_json(ws, { header:1, defval:"" });
-  if(!rows2D.length) return out;
-
-  // Elegimos la fila de encabezados: primera que contenga "Área" y "Puesto" y "Tareas", si no la 1ª
-  let hRow = 0;
-  for(let i=0;i<Math.min(5,rows2D.length);i++){
-    const line = rows2D[i].map(v => String(v).toLowerCase());
-    if(line.some(v=>v.includes("área")||v.includes("area")) &&
-       line.some(v=>v.includes("puesto")) &&
-       line.some(v=>v.includes("tarea"))) { hRow = i; break; }
-  }
-  const headers = rows2D[hRow].map(h => String(h||"").trim());
-  const startRow = hRow + 1;
-
-  // utilidad: obtener por índice de columna o por letra fija
-  const COL = { A:0,B:1,C:2,D:3,E:4,F:5,G:6,H:7,I:8,J:9,K:10,L:11,M:12,N:13,O:14,P:15,Q:16,R:17,S:18,T:19,U:20,V:21,W:22,X:23,Y:24,Z:25 };
-
-  for(let r = startRow; r < rows2D.length; r++){
-    const row = rows2D[r] || [];
-    const area   = String(row[COL.B] ?? "").trim();
-    const puesto = String(row[COL.C] ?? "").trim();
-    const tarea  = String(row[COL.D] ?? "").trim();
-    if(!(area || puesto || tarea)) continue;
-    if(isZeroish(area) || isZeroish(puesto)) continue;
-
-    const P = String(row[COL.P] ?? "").trim(); // Col P
-    const W = String(row[COL.W] ?? "").trim(); // Col W
-
-    // Construir listado de Q&A (omitimos B,C,D,P,W y celdas vacías)
-    const qa = [];
-    for(let c=0;c<row.length;c++){
-      if([COL.B, COL.C, COL.D, COL.P, COL.W].includes(c)) continue;
-      const val = row[c];
-      const label = headers[c] || `Col ${XLSX.utils.encode_col(c)}`;
-      if(val !== "" && label) qa.push({ label: String(label).trim(), value: String(val).trim() });
-    }
-
-    out.set(kAreaPuestoTarea(area, puesto, tarea), {
-      area, puesto, tarea, P, W, qa, headers
-    });
-  }
-  return out;
+/* ===== Filtros ===== */
+function uniqueSorted(arr){
+  return [...new Set(arr.filter(v => v && String(v).trim() !== ""))].sort((a,b)=> String(a).localeCompare(String(b)));
 }
-
-/* ===== Poblar filtros ===== */
 function populateArea(){
-  const opts = uniqueSorted(RAW_ROWS.map(r => r.B));
   const sel = el("filterArea");
+  const opts = uniqueSorted(RAW_ROWS.map(r => r.B));
   sel.innerHTML = `<option value="">(Todas)</option>` + opts.map(v => `<option>${escapeHtml(v)}</option>`).join("");
   sel.disabled = false;
 }
 function populatePuesto(){
   const sel = el("filterPuesto");
-  let list = RAW_ROWS;
-  if(FILTERS.area) list = list.filter(r => r.B === FILTERS.area);
+  let list = RAW_ROWS; if(FILTERS.area) list = list.filter(r => r.B===FILTERS.area);
   const opts = uniqueSorted(list.map(r => r.C));
   sel.innerHTML = `<option value="">(Todos)</option>` + opts.map(v => `<option>${escapeHtml(v)}</option>`).join("");
-  sel.disabled = opts.length === 0;
+  sel.disabled = opts.length===0;
 }
 function populateTarea(){
   const sel = el("filterTarea");
   let list = RAW_ROWS;
-  if(FILTERS.area) list = list.filter(r => r.B === FILTERS.area);
-  if(FILTERS.puesto) list = list.filter(r => r.C === FILTERS.puesto);
+  if(FILTERS.area) list = list.filter(r => r.B===FILTERS.area);
+  if(FILTERS.puesto) list = list.filter(r => r.C===FILTERS.puesto);
   const opts = uniqueSorted(list.map(r => r.D));
   sel.innerHTML = `<option value="">(Todas)</option>` + opts.map(v => `<option>${escapeHtml(v)}</option>`).join("");
-  sel.disabled = opts.length === 0;
+  sel.disabled = opts.length===0;
+}
+function populateFactor(){
+  const sel = el("filterFactor");
+  sel.innerHTML = `<option value="">(Todos)</option>` + RISKS.map(r => `<option value="${r.key}">${escapeHtml(r.label)}</option>`).join("");
 }
 
-/* ===== Filtro compuesto ===== */
 function filteredRows(){
-  return RAW_ROWS.filter(r => {
-    if(FILTERS.area && r.B !== FILTERS.area) return false;
-    if(FILTERS.puesto && r.C !== FILTERS.puesto) return false;
-    if(FILTERS.tarea && r.D !== FILTERS.tarea) return false;
-    return true;
-  });
+  let list = RAW_ROWS.slice();
+  if(FILTERS.area)   list = list.filter(r => r.B===FILTERS.area);
+  if(FILTERS.puesto) list = list.filter(r => r.C===FILTERS.puesto);
+  if(FILTERS.tarea)  list = list.filter(r => r.D===FILTERS.tarea);
+
+  if(FILTERS.factorKey){
+    const key = FILTERS.factorKey, state = (FILTERS.factorState||"").toUpperCase();
+    list = list.filter(r => {
+      const v = (r[key]||"").toUpperCase();
+      if(state==="SI") return v==="SI";
+      if(state==="NO") return v==="NO";
+      return v==="SI"||v==="NO"; // si hay factor, excluye N/A
+    });
+  }
+  return list;
 }
 
-/* ===== Estado por P/W ===== */
-function pwStatus(p, w){
-  const s = (w || p || "").toString().toLowerCase();
-  // heurística robusta
-  if(/no acept|alto|riesg|crit|aplicar.*avanz|evaluaci[oó]n avanzada|requiere/.test(s))
-    return {cls:"bad",  icon:"bi-x-octagon", label:"Requiere avanzada"};
-  if(/aceptable|sin riesgo|no aplica|apto|acept/.test(s))
-    return {cls:"ok",   icon:"bi-check-circle", label:"Aceptable"};
-  return {cls:"warn", icon:"bi-exclamation-triangle", label:"Revisar"};
-}
-
-/* ===== Render con slide ===== */
-let CURRENT_ROWS = []; // página actual (para abrir modal por índice)
-function render(withSlide=false){
+/* ===== Render ===== */
+function render(){
+  const target = el("cardsWrap");
   const data = filteredRows();
-  el("countRowsTotal").textContent = data.length;
-
-  // paginación
-  STATE.pageMax = Math.max(1, Math.ceil(data.length / STATE.perPage));
-  if(STATE.page > STATE.pageMax) STATE.page = STATE.pageMax;
-
-  const start = (STATE.page - 1) * STATE.perPage;
-  CURRENT_ROWS = data.slice(start, start + STATE.perPage);
-
-  const wrap = el("cardsWrap");
-
-  const direction = STATE.page > STATE.lastPage ? "right" : "left";
-  if(withSlide){
-    wrap.classList.remove("slide-enter-left","slide-enter-right");
-    void wrap.offsetWidth; // reflow
-    wrap.classList.add(direction==="right" ? "slide-enter-right" : "slide-enter-left");
-  }
-
-  if(CURRENT_ROWS.length === 0){
-    wrap.innerHTML = `<div class="col-12"><div class="alert alert-warning mb-0">
-      <i class="bi bi-exclamation-triangle"></i> No hay resultados con los filtros aplicados.
-    </div></div>`;
+  el("countRows").textContent = data.length;
+  if(data.length === 0){
+    target.innerHTML = `<div class="col-12"><div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle"></i> No hay resultados con los filtros aplicados.</div></div>`;
   }else{
-    wrap.innerHTML = CURRENT_ROWS.map((r, idx) => cardHtml(r, idx)).join("");
+    target.innerHTML = data.map((r,idx) => cardHtml(r, RAW_ROWS.indexOf(r))).join("");
   }
 
-  el("countRows").textContent = CURRENT_ROWS.length;
-  el("pageCur").textContent = STATE.page;
-  el("pageMax").textContent = STATE.pageMax;
+  // sincronizar panel derecho
+  document.dispatchEvent(new CustomEvent("matrizFiltersChanged", { detail: { filters: getMatrizFilters() }}));
 }
 
 function cardHtml(r, idx){
-  const key = kAreaPuestoTarea(r.B, r.C, r.D);
-  const mr = MOVREP_INDEX.get(key);
-  const P = mr?.P || "";
-  const W = mr?.W || "";
-  const st = pwStatus(P, W);
+  const badges = RISKS.map(x => {
+    const v = (r[x.key]||"").toString().toUpperCase();
+    const cls = v==="SI" ? "badge-yes" : (v==="NO" ? "badge-no" : "badge-na");
+    return `<span class="badge ${cls}" title="${escapeHtml(x.hoja)}">${escapeHtml(x.label)}: ${v||"N/A"}</span>`;
+  }).join(" ");
+
+  const needsAdvanced = needsAdvancedEval(r);
+  const resultClass = needsAdvanced ? "alert-danger" : ((r.Q||"").startsWith("Ausencia total") ? "alert-success" : "alert-primary");
 
   return `
-    <div class="col-12">
-      <div class="card card-ficha h-100 shadow-sm">
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="card card-ficha h-100 shadow-sm" role="button" tabindex="0" data-idx="${idx}">
         <div class="card-body">
-          <div class="d-flex align-items-start justify-content-between mb-2">
+          <div class="d-flex align-items-start justify-content-between">
             <div>
-              <div class="small text-muted">Área</div>
-              <h5 class="title mb-1">${escapeHtml(r.B || "-")}</h5>
-              <div class="mb-1"><i class="bi bi-person-badge"></i> <strong>Puesto:</strong> ${escapeHtml(r.C || "-")}</div>
-              <div class="mb-2"><i class="bi bi-list-check"></i> <strong>Tareas:</strong> ${escapeHtml(r.D || "-")}</div>
+              <div class="small text-muted mb-1">Área</div>
+              <h5 class="title mb-2">${escapeHtml(r.B||"-")}</h5>
             </div>
-            <span class="status ${st.cls}" title="Mov. Repetitivo · P/W">
-              <i class="bi ${st.icon}"></i> ${st.label}
-            </span>
+            <div class="text-end">
+              <span class="chip"><i class="bi bi-people"></i> H ${escapeHtml(r.H||"0")} · M ${escapeHtml(r.I||"0")}</span>
+            </div>
           </div>
+          <div class="mb-1"><i class="bi bi-person-badge"></i> <strong>Puesto:</strong> ${escapeHtml(r.C||"-")}</div>
+          <div class="mb-2"><i class="bi bi-list-check"></i> <strong>Tareas:</strong> ${escapeHtml(r.D||"-")}</div>
 
           <div class="row g-2 small">
-            <div class="col-6"><i class="bi bi-clock"></i> <strong>Horario:</strong> ${escapeHtml(r.E || "-")}</div>
-            <div class="col-6"><i class="bi bi-people"></i> <strong>H:</strong> ${escapeHtml(r.H||"0")} · <strong>M:</strong> ${escapeHtml(r.I||"0")}</div>
+            <div class="col-6"><i class="bi bi-clock"></i> <strong>Horario:</strong> ${escapeHtml(r.E||"-")}</div>
+            <div class="col-6"><i class="bi bi-plus-circle"></i> <strong>HE/Día:</strong> ${escapeHtml(r.F||"0")}</div>
+            <div class="col-6"><i class="bi bi-plus-circle-dotted"></i> <strong>HE/Semana:</strong> ${escapeHtml(r.G||"0")}</div>
           </div>
 
-          <hr class="my-2">
-          <div class="d-flex gap-2 flex-wrap">
-            <span class="pill"><i class="bi bi-upc-scan"></i> P: ${escapeHtml(P || "N/A")}</span>
-            <span class="pill"><i class="bi bi-clipboard2-check"></i> W: ${escapeHtml(W || "N/A")}</span>
-          </div>
+          <hr>
+          <div class="small"><strong>Factores (J–P):</strong></div>
+          <div class="factors-wrap">${badges}</div>
 
-          <div class="text-end mt-3">
-            <button class="btn btn-sm btn-primary" data-open-detail="${idx}">
-              <i class="bi bi-eye"></i> Ver detalles
-            </button>
+          <div class="alert ${resultClass} mt-2 mb-0" role="alert">
+            <i class="bi bi-clipboard-check"></i> <strong>Resultado:</strong> ${escapeHtml(r.Q||"-")}
           </div>
         </div>
       </div>
@@ -329,46 +291,207 @@ function cardHtml(r, idx){
   `;
 }
 
-/* ===== Modal Detalle (QA + P/W) ===== */
+/* ===== Detalle con relación a hojas ===== */
+
 function openDetail(r){
-  const key = kAreaPuestoTarea(r.B, r.C, r.D);
-  const mr = MOVREP_INDEX.get(key);
+  const body = el("detailBody");
+  const adv = needsAdvancedEval(r);
+  const mmcWarn = (r.L==="SI" || r.M==="SI");
 
-  const P = mr?.P || "";
-  const W = mr?.W || "";
-  const st = pwStatus(P, W);
+  const tilesHtml = RISKS.map(x => {
+    // estado básico (SI/NO/N/A)
+    const flag = (r[x.key]||"").toString().toUpperCase();
+    // buscar en hoja relacionada
+    const rel = lookupRelated(x.hoja, r); // {state:'ok|warn|risk', comment, metrics:[{k,v}]}
+    const cClass = rel.state==="risk" ? "hl-risk" : rel.state==="warn" ? "hl-warn" : "hl-ok";
+    const dot = rel.state==="risk" ? "m-risk" : rel.state==="warn" ? "m-warn" : "m-ok";
+    const line = (rel.comment||"").trim() || (flag==="SI" ? "Se detecta factor. Evaluar en profundidad." : (flag==="NO" ? "Sin hallazgo aparente." : "Sin información."));
 
-  const qaHtml = (mr?.qa || [])
-    .map(q => `
-      <div class="qrow">
-        <div class="qlabel">${escapeHtml(q.label)}</div>
-        <div class="qval">${escapeHtml(q.value)}</div>
+    const metrics = (rel.metrics||[]).map(m => `<div class="h-metric"><span class="m-dot ${dot}"></span> ${escapeHtml(m.k)}: <strong>${escapeHtml(m.v)}</strong></div>`).join("");
+
+    return `
+      <div class="adv-tile ${cClass}">
+        <div class="h-name">${escapeHtml(x.label)}</div>
+        <div class="h-sheet">${escapeHtml(x.hoja)}</div>
+        <div class="meter"><span class="m-dot ${dot}"></span> ${escapeHtml(line)}</div>
+        ${metrics ? `<div class="mt-1">${metrics}</div>` : ""}
       </div>
-    `).join("") || `<div class="alert alert-secondary">No hay preguntas/respuestas disponibles para esta fila.</div>`;
+    `;
+  }).join("");
 
-  const body = `
-    <div class="mb-2">
-      <div class="small text-muted">Área</div>
-      <h4 class="mb-1">${escapeHtml(r.B || "-")}</h4>
-      <div class="mb-1"><i class="bi bi-person-badge"></i> <strong>Puesto:</strong> ${escapeHtml(r.C || "-")}</div>
-      <div class="mb-2"><i class="bi bi-list-check"></i> <strong>Tareas:</strong> ${escapeHtml(r.D || "-")}</div>
+  const advAlert = adv
+    ? `<div class="alert alert-danger"><i class="bi bi-x-octagon"></i> <strong>Corresponde identificación avanzada.</strong> Uno o más factores presentan condición no aceptable.</div>`
+    : `<div class="alert alert-success"><i class="bi bi-check2-circle"></i> No se identifican condiciones que requieran avanzada.</div>`;
+
+  const mmcAlert = mmcWarn
+    ? `<div class="alert alert-warning mmc-alert"><i class="bi bi-exclamation-triangle"></i> Atención MMC:
+        ${ r.L==="SI" ? "<span class='pill warn'>Levantamiento/Descenso: SI</span> " : "" }
+        ${ r.M==="SI" ? "<span class='pill warn'>Empuje/Arrastre: SI</span>" : "" }
+      </div>` : "";
+
+  body.innerHTML = `
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <div class="small text-muted">Área</div>
+        <h5 class="mb-1">${escapeHtml(r.B || "-")}</h5>
+        <div class="mb-2"><i class="bi bi-person-badge"></i> <strong>Puesto:</strong> ${escapeHtml(r.C || "-")}</div>
+        <div class="mb-2"><i class="bi bi-list-check"></i> <strong>Tareas:</strong> ${escapeHtml(r.D || "-")}</div>
+        <div class="d-flex gap-2 flex-wrap">
+          <span class="pill"><i class="bi bi-clock"></i> ${escapeHtml(r.E || "-")}</span>
+          <span class="pill"><i class="bi bi-people"></i> H ${escapeHtml(r.H||"0")} · M ${escapeHtml(r.I||"0")}</span>
+        </div>
+      </div>
     </div>
 
-    <div class="d-flex flex-wrap gap-2 mb-3">
-      <span class="status ${st.cls}"><i class="bi ${st.icon}"></i> ${st.label}</span>
-      <span class="pill"><i class="bi bi-upc-scan"></i> Columna P: <strong>${escapeHtml(P || "N/A")}</strong></span>
-      <span class="pill"><i class="bi bi-clipboard2-check"></i> Columna W: <strong>${escapeHtml(W || "N/A")}</strong></span>
+    <hr>
+    ${advAlert}
+    ${mmcAlert}
+
+    <h6 class="mt-3">Resultados detallados por factor</h6>
+    <div class="d-grid" style="grid-template-columns:1fr; gap:.55rem;">
+      ${tilesHtml}
     </div>
 
-    <h6 class="mb-2">Preguntas y respuestas</h6>
-    <div class="detail-grid">
-      ${qaHtml}
-    </div>
+    <hr>
+    <div class="small text-muted">Resultado hoja inicial</div>
+    <div>${escapeHtml(r.Q||"-")}</div>
   `;
 
-  el("detailTitle").textContent = "Detalle · Movimiento Repetitivo";
-  el("detailBody").innerHTML = body;
+  el("detailTitle").textContent = `Detalle · ${r.B || "-"}`;
+  bootstrap.Offcanvas.getOrCreateInstance('#detailPanel').show();
+}
 
-  const modal = bootstrap.Modal.getOrCreateInstance('#detailModal');
-  modal.show();
+/* Heurística: si cualquier factor está "SI" o Q sugiere avanzada */
+function needsAdvancedEval(r){
+  const q = (r.Q||"").toLowerCase();
+  const qSaysAdv = q.includes("aplicar identificación avanzada") || q.includes("aplicar identificacion avanzada");
+  const anyYes = ['J','K','L','M','N','O','P'].some(k => (r[k]||"").toUpperCase()==="SI");
+  return qSaysAdv || anyYes;
+}
+
+/* ===== Relación a hojas: búsqueda flexible por cabeceras ===== */
+
+function sheetToObjectsFlexible(ws){
+  // Lee como 2D, detecta fila de headers (buscando columnas tipo 'Area','Puesto','Tareas')
+  const rows2D = XLSX.utils.sheet_to_json(ws, { header:1, defval:"" });
+  if(!rows2D.length) return [];
+
+  // normalizador
+  const n = (s)=>String(s||"").normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+
+  let headerRowIdx = 0, headers = rows2D[0].map(String);
+  const score = (arr) => {
+    const set = new Set(arr.map(n));
+    let s=0;
+    ["area","puesto","tareas","tarea"].forEach(k=>{ if(set.has(k)) s++; });
+    return s;
+  };
+  let best = score(headers);
+  for(let i=1;i<Math.min(rows2D.length,8);i++){
+    const sc = score(rows2D[i].map(String));
+    if(sc>best){ best=sc; headerRowIdx=i; headers = rows2D[i].map(String); }
+  }
+  const normHeaders = headers.map(h => n(h).replace(/\s+/g,'_').replace(/[^\w]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,''));
+
+  const objs = [];
+  for(let r=headerRowIdx+1; r<rows2D.length; r++){
+    const row = rows2D[r];
+    if(!row || row.every(v => (v==null || String(v).trim()===""))) continue;
+    const obj = {};
+    normHeaders.forEach((k, idx)=> obj[k] = row[idx]==null ? "" : row[idx]);
+    objs.push(obj);
+  }
+  return objs;
+}
+
+function lookupRelated(sheetDisplayName, r){
+  try{
+    const ws = WS_MAP[norm(sheetDisplayName)] ||
+               // tolerancia por diferencias leves
+               Object.entries(WS_MAP).find(([k]) => k.includes(norm(sheetDisplayName)))?.[1];
+    if(!ws) return { state: baseFromFlag((r||{})), comment:"Hoja no encontrada" };
+
+    const rows = sheetToObjectsFlexible(ws); // objetos con claves normalizadas
+    if(!rows.length) return { state:"ok", comment:"Sin registros" };
+
+    const targetArea  = norm(r.B);
+    const targetPuesto= norm(r.C);
+    const targetTarea = norm(r.D);
+
+    // detectar campos clave en la hoja
+    const pickKey = (obj, aliases)=> {
+      for(const a of aliases){
+        if(a in obj) return a;
+      }
+      return null;
+    };
+
+    // Usa la primera fila para saber campos existentes
+    const sample = rows[0];
+    const kArea   = pickKey(sample, ["area"]);
+    const kPuesto = pickKey(sample, ["puesto","puesto_de_trabajo","cargo"]);
+    const kTarea  = pickKey(sample, ["tareas","tarea","tareas_del_puesto"]);
+
+    // filtrar matching (tolerante: si falta una clave la ignora)
+    let matches = rows.filter(o => {
+      const okA = !kArea   || norm(o[kArea])   === targetArea;
+      const okP = !kPuesto || norm(o[kPuesto]) === targetPuesto;
+      const okT = !kTarea  || norm(o[kTarea])  === targetTarea;
+      return okA && okP && okT;
+    });
+
+    if(!matches.length){
+      // fallback: solo por área
+      matches = rows.filter(o => kArea && norm(o[kArea])===targetArea);
+      if(!matches.length) return baseFromFlag(r);
+    }
+
+    // extraer campos "resultado"/"nivel"/"riesgo" (heurística)
+    const toPairs = (o)=> Object.entries(o).map(([k,v])=>({k, v:String(v)}));
+    const m = matches[0]; // primera coincidencia
+    const pairs = toPairs(m);
+
+    const resPair = pairs.find(p => /resultado|aceptable|no_?aceptable|avanzad/i.test(p.k)) || 
+                    pairs.find(p => /nivel|riesgo|severidad/i.test(p.k));
+    let state = "ok", comment = "", metrics = [];
+
+    if(resPair){
+      const val = (resPair.v||"").toLowerCase();
+      if(/no\s*aceptable|avanzad|alto|rojo|riesgo\s*alto/.test(val)) { state="risk"; }
+      else if(/moderado|precauc|medio|amarill/.test(val))           { state="warn"; }
+      else if(/aceptable|bajo|verde|sin\s*riesgo/.test(val))         { state="ok"; }
+      comment = `${labelize(resPair.k)}: ${resPair.v}`;
+    }else{
+      // si no hay columna resultado, miramos algún umbral u observación
+      const obs = pairs.find(p => /observaci|coment/i.test(p.k));
+      if(obs){ comment = `${labelize(obs.k)}: ${obs.v}`; }
+      state = baseFromFlag(r).state;
+    }
+
+    // tomar algunas métricas relevantes si existen
+    const keepKeys = ["resultado","nivel","riesgo","puntuacion","puntos","score","indice","umbral","categoria","clasificacion"];
+    pairs.forEach(p => {
+      if(keepKeys.some(k => p.k.includes(k)) && p.k !== (resPair?.k||"")){
+        metrics.push({ k: labelize(p.k), v: p.v });
+      }
+    });
+
+    return { state, comment, metrics };
+  }catch(_){
+    return baseFromFlag(r);
+  }
+}
+
+function baseFromFlag(r){
+  // Si el campo del factor está SI -> warn por defecto, si NO -> ok
+  return { state: needsAdvancedEval(r) ? "risk" : "ok", comment:"" };
+}
+
+function labelize(k){
+  return String(k||"").replace(/_/g,' ').replace(/\b\w/g, m => m.toUpperCase());
+}
+
+/* ===== Utils ===== */
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
 }

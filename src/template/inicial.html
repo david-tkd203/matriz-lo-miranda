@@ -4,27 +4,38 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IST · Matriz VOTME · Inicial</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+  integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <link rel="stylesheet" href="../static/css/inicial.css">
+<!-- Forzar 1 target por fila -->
+<style>
+  /* Asegura que cada hijo directo ocupe toda la fila (útil cuando las fichas se insertan por JS) */
+  #cardsWrap > * {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+</style>
+<!-- SheetJS para lectura de Excel en navegador -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
-<body class="bg-light">
+<body class="bg-light"></body>
 <nav class="navbar navbar-expand-lg navbar-dark ist-navbar sticky-top">
-  <div class="container">
-    <a class="navbar-brand d-flex align-items-center gap-2" href="portada.html">
-      <img src="../static/img/logo_ist.png" alt="IST" height="36">
-      <span class="fw-bold">Matriz VOTME · Inicial</span>
+  <div class="container"></div>
+    <a class="navbar-brand d-flex align-items-center gap-2" href="portada.html"></a>
+  <img src="../static/img/logo_ist.png" alt="IST" height="36">
+  <span class="fw-bold">Matriz VOTME · Inicial</span>
     </a>
     <div class="ms-auto d-flex align-items-center gap-2">
-      <a class="btn btn-outline-light btn-sm" href="cuestionarios_respondidos.html">
-        <i class="bi bi-list-ul"></i> Cuestionarios
-      </a>
-      <label class="btn btn-outline-light btn-sm mb-0" for="fileInput">
-        <i class="bi bi-file-earmark-spreadsheet"></i> Cargar Excel
-      </label>
-      <input id="fileInput" type="file" accept=".xlsx,.xls" class="d-none">
-      <a class="btn btn-outline-light btn-sm" href="portada.html"><i class="bi bi-house"></i> Portada</a>
+  <a class="btn btn-outline-light btn-sm" href="cuestionarios_respondidos.html">
+    <i class="bi bi-list-ul"></i> Cuestionarios
+  </a>
+  <label class="btn btn-outline-light btn-sm mb-0" for="fileInput">
+    <i class="bi bi-file-earmark-spreadsheet"></i> Cargar Excel
+  </label>
+  <input id="fileInput" type="file" accept=".xlsx,.xls" class="d-none">
+  <a class="btn btn-outline-light btn-sm" href="portada.html"><i class="bi bi-house"></i> Portada</a>
     </div>
   </div>
 </nav>
@@ -32,113 +43,120 @@
 <main class="py-4">
   <div class="container">
 
-    <!-- Filtros -->
-    <div class="card shadow-sm mb-3 border-0" id="filtersCard">
-      <div class="card-body">
-        <div class="row g-3 align-items-end">
-          <div class="col-md-3">
-            <label class="form-label fw-semibold"><i class="bi bi-diagram-3"></i> Área</label>
-            <select id="filterArea" class="form-select">
-              <option value="">(Todas)</option>
-            </select>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label fw-semibold"><i class="bi bi-person-vcard"></i> Puesto de trabajo</label>
-            <select id="filterPuesto" class="form-select" disabled>
-              <option value="">(Todos)</option>
-            </select>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label fw-semibold"><i class="bi bi-list-task"></i> Tareas del puesto</label>
-            <select id="filterTarea" class="form-select" disabled>
-              <option value="">(Todas)</option>
-            </select>
-          </div>
+    <!-- Filtros matriz -->
+    <div class="card shadow-sm mb-3 border-0">
+  <div class="card-body">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-3">
+    <label class="form-label fw-semibold"><i class="bi bi-diagram-3"></i> Área</label>
+    <select id="filterArea" class="form-select">
+      <option value="">(Todas)</option>
+    </select>
+      </div>
+      <div class="col-md-3">
+    <label class="form-label fw-semibold"><i class="bi bi-person-vcard"></i> Puesto de trabajo</label>
+    <select id="filterPuesto" class="form-select" disabled>
+      <option value="">(Todos)</option>
+    </select>
+      </div>
+      <div class="col-md-3">
+    <label class="form-label fw-semibold"><i class="bi bi-list-task"></i> Tareas del puesto</label>
+    <select id="filterTarea" class="form-select" disabled>
+      <option value="">(Todas)</option>
+    </select>
+      </div>
 
-          <!-- Filtro por factor (opcional; dejamos solo Mov. Rep.) -->
-          <div class="col-md-3">
-            <label class="form-label fw-semibold"><i class="bi bi-repeat"></i> Enfoque</label>
-            <select id="filterFactor" class="form-select">
-              <option value="movrep" selected>Movimiento repetitivo (P/W)</option>
-            </select>
-            <div class="mt-2 d-flex gap-2">
-              <button id="btnReset" class="btn btn-outline-secondary btn-sm" title="Limpiar filtros">
-                <i class="bi bi-arrow-counterclockwise"></i>
-              </button>
-              <button id="btnReload" class="btn btn-outline-primary btn-sm" title="Recargar archivo">
-                <i class="bi bi-arrow-repeat"></i>
-              </button>
-            </div>
-          </div>
-        </div>
+      <!-- Filtro por factor -->
+      <div class="col-md-3">
+    <label class="form-label fw-semibold"><i class="bi bi-exclamation-octagon"></i> Factor de riesgo</label>
+    <select id="filterFactor" class="form-select">
+      <option value="">(Todos)</option>
+    </select>
+    <div class="mt-2 d-flex gap-2">
+      <select id="filterFactorState" class="form-select form-select-sm">
+        <option value="">Estado: (Todos)</option>
+        <option value="SI">Solo SI</option>
+        <option value="NO">Solo NO</option>
+      </select>
+      <button id="btnReset" class="btn btn-outline-secondary btn-sm" title="Limpiar filtros">
+        <i class="bi bi-arrow-counterclockwise"></i>
+      </button>
+      <button id="btnReload" class="btn btn-outline-primary btn-sm" title="Recargar archivo">
+        <i class="bi bi-arrow-repeat"></i>
+      </button>
+    </div>
+      </div>
+    </div>
+  </div>
+    </div>
+
+    <!-- Layout dividido: fichas (izquierda) + panel lateral (derecha) -->
+    <div class="row g-3">
+  <!-- IZQUIERDA -->
+  <div class="col-lg-8">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="small text-muted">
+    <i class="bi bi-info-circle"></i> Mostrando <span id="countRows">0</span> fichas visibles
       </div>
     </div>
 
-    <!-- Layout: fichas (izquierda) + panel lateral (derecha) -->
-    <div class="row g-3">
-      <!-- IZQUIERDA -->
-      <div class="col-lg-8">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="small text-muted">
-            <i class="bi bi-info-circle"></i> Mostrando <span id="countRows">0</span> fichas visibles
-          </div>
-        </div>
+    <!-- FICHAS: ahora siempre 1 por fila -->
+    <div id="cardsWrap" class="row g-3 row-cols-1"></div>
 
-        <!-- Contenedor “slide” (1 tarjeta por fila) -->
-        <div id="cardsWrap" class="row g-3 row-cols-1 slide-stage"></div>
-
-        <!-- Barra inferior con paginación (sticky) -->
-        <div class="bottom-sticky bg-white border rounded-3 p-2 mt-3 shadow-sm" id="bottomBar">
-          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-            <div class="small text-muted">
-              Total filtrado: <strong><span id="countRowsTotal">0</span></strong> ·
-              Página <span id="pageCur">1</span>/<span id="pageMax">1</span>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-              <label class="small me-1">Por página</label>
-              <select id="perPage" class="form-select form-select-sm w-auto">
-                <option>5</option>
-                <option selected>10</option>
-                <option>15</option>
-                <option>25</option>
-              </select>
-              <div class="btn-group btn-group-sm" role="group" aria-label="Paginación">
-                <button class="btn btn-outline-secondary" id="btnPrev" title="Anterior">
-                  <i class="bi bi-chevron-left"></i>
-                </button>
-                <button class="btn btn-outline-secondary" id="btnNext" title="Siguiente">
-                  <i class="bi bi-chevron-right"></i>
-                </button>
-              </div>
-              <button class="btn btn-outline-secondary btn-sm" id="btnTop" title="Ir arriba">
-                <i class="bi bi-arrow-up"></i>
-              </button>
-            </div>
-          </div>
-        </div>
+    <!-- BOTTOM “HEADER” (STICKY) con paginación y por-página -->
+    <div class="bottom-sticky bg-white border rounded-3 p-2 mt-3 shadow-sm">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <div class="small text-muted">
+      Total filtrado: <strong><span id="countRowsTotal">0</span></strong> ·
+      Página <span id="pageCur">1</span>/<span id="pageMax">1</span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <label class="small me-1">Por página</label>
+      <select id="perPage" class="form-select form-select-sm w-auto">
+        <option>5</option>
+        <option selected>10</option>
+        <option>15</option>
+        <option>25</option>
+        <option>50</option>
+      </select>
+      <div class="btn-group btn-group-sm" role="group" aria-label="Paginación">
+        <button class="btn btn-outline-secondary" id="btnPrev" title="Anterior">
+      <i class="bi bi-chevron-left"></i>
+        </button>
+        <button class="btn btn-outline-secondary" id="btnNext" title="Siguiente">
+      <i class="bi bi-chevron-right"></i>
+        </button>
       </div>
-
-      <!-- DERECHA: Cuestionarios por Área -->
-      <div class="col-lg-4">
-        <div class="card shadow-sm border-0">
-          <div class="card-body">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <h5 class="mb-0"><i class="bi bi-people"></i> Cuestionarios por Área</h5>
-              <a class="btn btn-sm btn-outline-primary" href="cuestionarios_respondidos.html">
-                <i class="bi bi-list-ul"></i> Ver lista
-              </a>
-            </div>
-            <p class="text-muted small mb-3">
-              Vigencia: verde (vigente, ≤ 365 días) · rojo (vencido, &gt; 365 días).
-            </p>
-            <div id="areasList"></div>
-            <div id="areasEmpty" class="alert alert-warning small d-none mt-3">
-              <i class="bi bi-exclamation-triangle"></i> No hay cuestionarios para mostrar.
-            </div>
-          </div>
-        </div>
+      <button class="btn btn-outline-secondary btn-sm" id="btnTop" title="Ir arriba">
+        <i class="bi bi-arrow-up"></i>
+      </button>
+    </div>
       </div>
+    </div>
+  </div>
+
+  <!-- DERECHA -->
+  <div class="col-lg-4">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <h5 class="mb-0"><i class="bi bi-people"></i> Cuestionarios por Área</h5>
+      <a class="btn btn-sm btn-outline-primary" href="cuestionarios_respondidos.html">
+        <i class="bi bi-list-ul"></i> Ver lista
+      </a>
+    </div>
+    <p class="text-muted small mb-3">
+      Vigencia: verde (vigente, ≤ 365 días) · rojo (vencido, &gt; 365 días).
+    </p>
+    <div id="areasList"></div>
+    <div id="areasEmpty" class="alert alert-warning small d-none mt-3">
+      <i class="bi bi-exclamation-triangle"></i> No hay cuestionarios para mostrar.
+    </div>
+      </div>
+    </div>
+  </div>
     </div><!-- /row -->
+
   </div>
 </main>
 
@@ -148,18 +166,14 @@
   </div>
 </footer>
 
-<!-- MODAL DETALLE (pantalla completa) -->
-<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-fullscreen">
-    <div class="modal-content">
-      <div class="modal-header border-0">
-        <h5 class="modal-title" id="detailTitle">Detalle Movimiento Repetitivo</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body">
-        <div id="detailBody"></div>
-      </div>
-    </div>
+<!-- Offcanvas Detalle (FRAME) -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="detailPanel" aria-labelledby="detailTitle">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="detailTitle">Detalle</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div id="detailBody"></div>
   </div>
 </div>
 
@@ -171,6 +185,8 @@
 
 <script src="../js/inicial.js"></script>
 <script src="../js/inicial_cuestionarios.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+    crossorigin="anonymous"></script>
 </body>
 </html>
