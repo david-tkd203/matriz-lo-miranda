@@ -439,7 +439,7 @@ function cardHtml(r, idx){
 
           <!-- FACTORES (J..P) -->
           <div class="mb-2">
-            <div class="small text-muted mb-1"><i class="bi bi-exclamation-octagon"></i> Factores</div>
+            <div class="small text-muted mb-1"><i class="bi bi-exclamation-octagon"></i> Identificación Inicial</div>
             <div class="factors-wrap">
               ${factorChips(r)}
             </div>
