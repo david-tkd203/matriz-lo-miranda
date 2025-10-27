@@ -1,209 +1,149 @@
 /* inicial_cuestionarios.js
-   Panel derecho: “Cuestionarios por Área” con colapsables por Puesto → Personas
-   - Lee respuestas desde ../source/respuestas_cuestionario.xlsx (hoja "Respuestas") o cache local
-   - Sincroniza con filtros de la matriz (evento 'matrizFiltersChanged' y window.__MATRIZ_FILTERED_PUESTOS)
-   - Muestra estado Vigente/Vencido por persona (por fecha más reciente)
+   - Lee respuestas_cuestionario.xlsx (o cache local del formulario)
+   - Muestra panel derecho: por Área -> colapsa por Puesto -> lista personas con estado (Vigente/Próximo/Vencido)
+   - Respeta filtros actuales de la matriz (área/puesto/tarea/factor) escuchando 'matrizFiltersChanged'
 */
 
-const VALID_DAYS = 365; // vigencia de un cuestionario (días)
-let RESP_ROWS = [];     // filas de Respuestas
-let HAS_DATA = false;
+(() => {
+  const VIGENCIA_DIAS = 365;       // vigente si <= 365 días
+  const PROXIMO_UMBRAL = 30;       // "próximo a vencer" si faltan <= 30 días
 
-document.addEventListener("DOMContentLoaded", () => {
-  // Hidratar desde cache local (si existe) para dar feedback rápido
-  tryLoadCache();
-  // Intentar XLSX del servidor
-  tryLoadResponses();
-  // Reaccionar a cambios de filtros de la matriz
-  window.addEventListener('matrizFiltersChanged', () => renderAreasPanel());
-});
+  // cache en memoria
+  let ROWS = []; // respuestas del cuestionario
 
-function tryLoadCache(){
-  try{
-    const cache = JSON.parse(localStorage.getItem("RESPUESTAS_CACHE_V1") || "null");
-    if(cache && Array.isArray(cache.rows)){
-      RESP_ROWS = cache.rows.slice();
-      HAS_DATA = true;
-      renderAreasPanel();
-    }
-  }catch(_){}
-}
+  // inicio
+  document.addEventListener("DOMContentLoaded", () => {
+    tryLoadFromCacheFirst();
+    loadExcelRespuestas(); // hidratar si existe archivo
+    // sincronía con filtros de matriz
+    document.addEventListener("matrizFiltersChanged", renderPanel);
+  });
 
-async function tryLoadResponses(){
-  try{
-    if(!window.RESP_XLSX) return;
-    const res = await fetch(addCacheBuster(window.RESP_XLSX), { cache:"no-store" });
-    if(!res.ok) return;
-    const buf = await res.arrayBuffer();
-    const wb = XLSX.read(buf, { type:"array" });
-    let ws = wb.Sheets["Respuestas"] || wb.Sheets[wb.SheetNames[0]];
-    if(!ws) return;
-    const rows = XLSX.utils.sheet_to_json(ws, { defval:"" });
-    if(Array.isArray(rows) && rows.length){
-      RESP_ROWS = rows;
-      HAS_DATA = true;
-      renderAreasPanel();
-    }
-  }catch(_){}
-}
+  function byId(id){ return document.getElementById(id); }
 
-function addCacheBuster(path){
-  const sep = path.includes("?") ? "&" : "?";
-  return `${path}${sep}v=${Date.now()}`;
-}
-
-/* ======= Render panel ======= */
-function renderAreasPanel(){
-  const wrap = document.getElementById("areasList");
-  const empty = document.getElementById("areasEmpty");
-  if(!wrap || !empty) return;
-
-  if(!HAS_DATA || !RESP_ROWS.length){
-    wrap.innerHTML = "";
-    empty.classList.remove("d-none");
-    return;
-  }
-  empty.classList.add("d-none");
-
-  // Tomar filtros actuales (expuestos por inicial.js)
-  const filters = window.__MATRIZ_FILTERS || {};
-  const allowed = window.__MATRIZ_FILTERED_PUESTOS || new Set();
-
-  // Filtro por Área (obligatorio si viene)
-  let rows = RESP_ROWS.slice();
-  if(filters.area){
-    rows = rows.filter(r => (r.Area||"").trim() === filters.area);
-  }
-  // Si hay set de puestos permitidos (por factor / tarea), restringir
-  if(allowed.size){
-    rows = rows.filter(r => allowed.has(`${(r.Area||"").trim()}|||${(r.Puesto_de_Trabajo||"").trim()}`));
-  }else{
-    // Si hay filtro de Puesto en la matriz y no hay allowed (por ejemplo sin factor),
-    // aplicar al dataset de respuestas igualmente:
-    if(filters.puesto){
-      rows = rows.filter(r => (r.Puesto_de_Trabajo||"").trim() === filters.puesto);
-    }
+  function tryLoadFromCacheFirst(){
+    try{
+      const cache = JSON.parse(localStorage.getItem("RESPUESTAS_CACHE_V1") || "null");
+      if(cache && Array.isArray(cache.rows)) ROWS = cache.rows.slice();
+      renderPanel();
+    }catch(_){}
   }
 
-  // Agrupar por Puesto y, dentro, por Persona → seleccionar fecha más reciente
-  const map = new Map(); // puesto -> Map(persona -> {row, status})
-  for(const r of rows){
-    const puesto = String(r.Puesto_de_Trabajo||"").trim() || "(Sin puesto)";
-    const persona = String(r.Nombre_Trabajador||"").trim() || "(Sin nombre)";
-    const current = { date: parseFecha(r.Fecha), raw: r };
-    if(!map.has(puesto)) map.set(puesto, new Map());
-    const pMap = map.get(puesto);
-    if(!pMap.has(persona)){
-      pMap.set(persona, current);
-    }else{
-      // conservar el más reciente
-      const prev = pMap.get(persona);
-      if(current.date && (!prev.date || current.date > prev.date)) pMap.set(persona, current);
-    }
+  async function loadExcelRespuestas(){
+    try{
+      const res = await fetch(window.RESP_XLSX, { cache:"no-store" });
+      if(!res.ok) return;
+      const buf = await res.arrayBuffer();
+      const wb = XLSX.read(buf, { type:"array" });
+      const ws = wb.Sheets["Respuestas"] || wb.Sheets[wb.SheetNames[0]];
+      if(!ws) return;
+      const rows = XLSX.utils.sheet_to_json(ws, { defval:"" });
+      // fusionar sin duplicar ID
+      const seen = new Set(ROWS.map(r => String(r.ID||"")));
+      rows.forEach(r => {
+        const id = String(r.ID||"");
+        if(id && !seen.has(id)){ ROWS.push(r); seen.add(id); }
+      });
+      renderPanel();
+    }catch(_){}
   }
 
-  if(map.size === 0){
-    wrap.innerHTML = `<div class="alert alert-info small mb-0">No hay cuestionarios que coincidan con los filtros.</div>`;
-    return;
+  function getFilters(){
+    if(typeof window.getMatrizFilters === "function") return window.getMatrizFilters();
+    return { area:"", puesto:"", tarea:"", factorKey:"", factorState:"" };
   }
 
-  // Construir accordion
-  let idx = 0;
-  let html = `<div class="accordion" id="accAreas">`;
-  for(const [puesto, pMap] of map){
-    const id = `accPuesto_${idx++}`;
-    // Contar Vigente/Vencido
-    let vig = 0, ven = 0;
-    const persons = [];
-    for(const [persona, info] of pMap){
-      const { status } = statusFromDate(info.date);
-      if(status === "Vigente") vig++; else ven++;
-      persons.push({ persona, info, status });
-    }
-    persons.sort((a,b)=> a.persona.localeCompare(b.persona));
+  function parseDMY(s){
+    // admite dd/mm/yyyy
+    const m = String(s||"").match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+    if(!m) return null;
+    const [_,d,mo,y] = m.map(Number);
+    return new Date(y, mo-1, d);
+  }
 
-    html += `
-      <div class="accordion-item">
-        <h2 class="accordion-header" id="${id}_h">
-          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${id}_c" aria-expanded="false" aria-controls="${id}_c">
-            <div class="w-100 d-flex justify-content-between align-items-center">
-              <span><i class="bi bi-person-vcard"></i> <strong>${escapeHtml(puesto)}</strong></span>
-              <span class="d-flex align-items-center gap-2">
-                <span class="badge badge-vigente">Vigentes: ${vig}</span>
-                <span class="badge badge-vencido">Vencidos: ${ven}</span>
-              </span>
-            </div>
-          </button>
-        </h2>
-        <div id="${id}_c" class="accordion-collapse collapse" aria-labelledby="${id}_h" data-bs-parent="#accAreas">
-          <div class="accordion-body p-0">
-            <ul class="list-group list-group-flush">
-              ${persons.map(p => {
-                const fstr = formatFecha(infoToFechaString(p.info.raw.Fecha));
-                const sex = (p.info.raw.Sexo||"").toString();
-                return `
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                  <div>
-                    <div class="fw-semibold">${escapeHtml(p.persona)}</div>
-                    <div class="small text-muted">
-                      ${escapeHtml(sex)} · Último: ${escapeHtml(fstr||"-")}
-                    </div>
-                  </div>
-                  <span class="badge ${p.status === "Vigente" ? "badge-vigente" : "badge-vencido"}">${p.status}</span>
-                </li>`;
-              }).join("")}
-            </ul>
+  function estadoVigencia(fechaDMY){
+    const d = parseDMY(fechaDMY) || new Date(0);
+    const hoy = new Date();
+    const diff = Math.floor((hoy - d)/(1000*60*60*24));
+    if(diff <= VIGENCIA_DIAS - PROXIMO_UMBRAL) return { cls:"status-vigente", label:"Vigente" };
+    if(diff <= VIGENCIA_DIAS)                 return { cls:"status-proximo", label:"Próximo a vencer" };
+    return { cls:"status-vencido", label:"Vencido" };
+  }
+
+  function renderPanel(){
+    const { area, puesto, tarea } = getFilters();
+    const mount = byId("areasList");
+    const empty = byId("areasEmpty");
+
+    // filtrar por área (respuestas pueden no tener tarea exacta; usamos área y puesto si está)
+    let data = ROWS.slice();
+    if(area)  data = data.filter(r => (r.Area||"") === area);
+    if(puesto) data = data.filter(r => (r.Puesto_de_Trabajo||"") === puesto);
+
+    if(!data.length){
+      mount.innerHTML = "";
+      empty.classList.remove("d-none");
+      return;
+    }
+    empty.classList.add("d-none");
+
+    // agrupar: Area -> Puesto -> personas
+    const byPuesto = {};
+    data.forEach(r => {
+      const p = String(r.Puesto_de_Trabajo||"Sin Puesto");
+      if(!byPuesto[p]) byPuesto[p] = [];
+      byPuesto[p].push(r);
+    });
+
+    // resumen por área (H+M)
+    const totalH = data.filter(r => /^h/i.test(String(r.Sexo||""))).length;
+    const totalM = data.filter(r => /^m/i.test(String(r.Sexo||""))).length;
+
+    // HTML
+    const puestosHtml = Object.keys(byPuesto).sort((a,b)=> a.localeCompare(b)).map((p, idx) => {
+      const pid = `p_${idx}`;
+      const persons = byPuesto[p].sort((a,b)=> String(a.Nombre_Trabajador||"").localeCompare(String(b.Nombre_Trabajador||"")));
+      const personsHtml = persons.map(r => {
+        const st = estadoVigencia(r.Fecha);
+        return `
+          <div class="person-row">
+            <div><i class="bi bi-person-circle"></i> ${escapeHtml(r.Nombre_Trabajador||"-")} <span class="text-muted">(${escapeHtml(r.Sexo||"-")})</span></div>
+            <div class="status-pill ${st.cls}">${st.label}</div>
           </div>
+        `;
+      }).join("");
+
+      return `
+        <div class="mb-2">
+          <button class="puesto-btn" data-bs-toggle="collapse" data-bs-target="#${pid}" aria-expanded="false">
+            <span><i class="bi bi-person-badge"></i> ${escapeHtml(p)}</span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+          <div id="${pid}" class="collapse mt-2">
+            <div class="list-group list-group-flush">
+              ${personsHtml || `<div class="text-muted small">Sin personas registradas.</div>`}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    mount.innerHTML = `
+      <div class="area-block">
+        <div class="area-head">
+          <div><strong>${escapeHtml(area || "Todas las áreas")}</strong></div>
+          <div class="d-flex gap-2">
+            <span class="pill"><i class="bi bi-people"></i> H ${totalH} · M ${totalM}</span>
+          </div>
+        </div>
+        <div class="mt-2">
+          ${puestosHtml || `<div class="text-muted small">No hay puestos para mostrar.</div>`}
         </div>
       </div>
     `;
   }
-  html += `</div>`;
-  wrap.innerHTML = html;
-}
 
-/* ======= Fechas / estado ======= */
-function parseFecha(s){
-  if(!s) return null;
-  // soporta dd/mm/yyyy o yyyy-mm-dd
-  const t = String(s).trim();
-  let d = null;
-  if(/^\d{2}\/\d{2}\/\d{4}$/.test(t)){
-    const [dd,mm,yy] = t.split('/').map(n=>parseInt(n,10));
-    d = new Date(yy, mm-1, dd);
-  }else if(/^\d{4}-\d{2}-\d{2}$/.test(t)){
-    const [yy,mm,dd] = t.split('-').map(n=>parseInt(n,10));
-    d = new Date(yy, mm-1, dd);
-  }else{
-    const tryDate = new Date(t);
-    if(!isNaN(tryDate.getTime())) d = tryDate;
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   }
-  return (d && !isNaN(d.getTime())) ? d : null;
-}
-function daysDiff(from, to){
-  const MS = 24*60*60*1000;
-  const a = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-  const b = new Date(to.getFullYear(), to.getMonth(), to.getDate());
-  return Math.round((b-a)/MS);
-}
-function statusFromDate(d){
-  if(!d) return { status:"Vencido", days: null };
-  const diff = daysDiff(d, new Date());
-  return { status: diff <= VALID_DAYS ? "Vigente" : "Vencido", days: diff };
-}
-function infoToFechaString(s){ return String(s||"").trim(); }
-function formatFecha(s){
-  const d = parseFecha(s);
-  if(!d) return "";
-  const dd = String(d.getDate()).padStart(2,"0");
-  const mm = String(d.getMonth()+1).padStart(2,"0");
-  const yy = d.getFullYear();
-  return `${dd}/${mm}/${yy}`;
-}
-
-/* ====== Utils ====== */
-function escapeHtml(str){
-  return String(str).replace(/[&<>"']/g, s => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  })[s]);
-}
+})();

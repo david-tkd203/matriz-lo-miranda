@@ -1,126 +1,90 @@
 :root{
   --ist-purple:#552789;
   --ist-purple-dk:#3e1a66;
-  --ist-fuchsia:#FA35A9;
   --muted:#8b86a3;
   --chip-bg:#f7f2ff;
+
+  /* Estados */
+  --ok:#2ecc71;
+  --warn:#f1c40f;
+  --risk:#e74c3c;
+  --soft:#f4f2fb;
 }
 
-/* NAVBAR */
 .ist-navbar{ background: var(--ist-purple-dk); }
 .ist-navbar .navbar-brand{ display:inline-flex; align-items:center; gap:.5rem; padding:.25rem 0; }
 .ist-navbar .navbar-brand img{ height:36px; display:block; }
 .ist-navbar .nav-link{ color:#fff !important; }
 .ist-navbar .nav-link:hover{ color:#f2e9ff !important; }
 
-/* Badges (SI/NO/N/A) */
+/* Badges factores */
 .badge-yes{ background:#d1f7c4; color:#1d7a2e; }
 .badge-no { background:#ffe3e8; color:#b70a3c; }
 .badge-na { background:#eee;    color:#666; }
 
-/* ===== FICHAS (TARGETS) ===== */
-
-/* Aumentamos el ancho de columna en escritorio: de 1/3 a 1/2 */
-@media (min-width: 992px){
-  #cardsWrap > .col-lg-4{
-    width:50%;
-    flex:0 0 50%;
-  }
-}
-/* En pantallas muy anchas, mantenemos 1/2 para priorizar legibilidad */
-@media (min-width: 1400px){
-  #cardsWrap > .col-xxl-3, /* por si Bootstrap asigna otras utility cols */
-  #cardsWrap > .col-lg-4{
-    width:50%;
-    flex:0 0 50%;
-  }
-}
-
-/* Tarjeta más aire y altura mínima mayor */
-.card-ficha{
-  border-left:6px solid var(--ist-purple);
-}
-.card-ficha .card-body{
-  padding:1.25rem 1.25rem 1rem 1.25rem;
-}
-.card-ficha.h-100{
-  min-height: 320px; /* antes 0: ahora más alta para textos largos */
-}
-
-/* Título y textos: prevenir desbordes y cortar bien en móviles */
-.card-ficha .title{
-  color:var(--ist-purple);
-  font-size:1.15rem;          /* más grande */
-  line-height:1.3;
-  overflow-wrap:anywhere;      /* rompe palabras largas */
-  word-break:break-word;
-  margin-bottom:.25rem;
-}
-
-/* Líneas de texto de campos */
-.card-ficha .mb-1,
-.card-ficha .mb-2,
-.card-ficha .row.small,
-.card-ficha .row.g-2{
-  overflow-wrap:anywhere;
-  word-break:break-word;
-}
-
-/* Chips de totales H/M y similares */
+/* Fichas (target = botón) */
+.card-ficha{ border-left:5px solid var(--ist-purple); transition: transform .12s ease, box-shadow .12s ease; cursor:pointer; }
+.card-ficha .title{ color:var(--ist-purple); }
+.card-ficha:hover{ transform: translateY(-2px); box-shadow:0 8px 18px rgba(0,0,0,.12) !important; }
 .chip{
-  display:inline-block;
-  font-size:.85rem;
-  background:var(--chip-bg);
-  color:var(--ist-purple);
-  border-radius:16px;
-  padding:.3rem .6rem;
-  margin-right:.25rem;
-  white-space:nowrap;
+  display:inline-block; font-size:.8rem; background:var(--chip-bg);
+  color:var(--ist-purple); border-radius:16px; padding:.25rem .5rem; margin-right:.25rem;
 }
 
-/* Bloque de badges de factores J–P: permitir múltiples filas con buen gap */
-.card-ficha .d-flex.flex-wrap.gap-1 > .badge{
-  margin-bottom:.25rem;
-}
-
-/* Icono redondo opcional para secciones */
-.tile-icon.logo-ist{
-  width:3.5rem; height:3.5rem; border-radius:9999px;
-  background:#fff url("/static/img/logo_ist.png") center/80% no-repeat;
-  box-shadow:0 8px 18px rgba(0,0,0,.08);
-}
-.tile-icon.logo-ist i{ display:none; }
-
-/* Utilidades */
-.text-muted, .small{ color: var(--muted) !important; }
-/* --- chips y badges extra --- */
-.badge-yes{ background:#d1f7c4; color:#1d7a2e; }
-.badge-no { background:#ffe3e8; color:#b70a3c; }
-.badge-na { background:#eee;    color:#666; }
-
-.badge-vigente{
-  background:#d1f7c4; color:#1d7a2e; border:1px solid #b8ebb0;
-}
-.badge-vencido{
-  background:#ffe3e8; color:#b70a3c; border:1px solid #ffd1da;
-}
-.pill{
-  display:inline-block; font-size:.8rem; background:#f7f2ff;
-  color:#552789; border:1px solid #e8e6f2; border-radius:9999px;
-  padding:.2rem .55rem;
-}
-.pill.warn{
-  background:#fff6e9; color:#8a5300; border-color:#ffd8a8;
+/* Offcanvas Detalle */
+.offcanvas .pill{
+  display:inline-flex; align-items:center; gap:.35rem;
+  background:var(--soft); border:1px solid #e8e6f2; color:#333; padding:.2rem .5rem; border-radius:999px; font-size:.8rem;
 }
 .factor-row{
-  display:flex; justify-content:space-between; align-items:center;
-  gap:1rem; padding:.4rem .25rem; border-bottom:1px dashed #eee;
+  display:grid; grid-template-columns: 1fr auto; align-items:center;
+  gap:.5rem; padding:.4rem .6rem; border:1px solid #eee; border-radius:.5rem; margin:.35rem 0; background:#fff;
 }
+.factor-row .meter{
+  display:inline-flex; align-items:center; gap:.4rem; font-size:.8rem;
+}
+.m-dot{ width:.6rem; height:.6rem; border-radius:50%; display:inline-block; }
+.m-ok   { background:var(--ok); }
+.m-warn { background:var(--warn); }
+.m-risk { background:var(--risk); }
 
-/* Tarjeta clickable accesible */
-.card-ficha{ border-left:5px solid #552789; cursor:pointer; }
-.card-ficha:focus{ outline:3px solid rgba(85,39,137,.2); }
+/* Resultado global */
+.alert-success{ background:#eafaf0; border-color:#d8f5e3; }
+.alert-danger { background:#fdecea; border-color:#f7d4d0; }
+.alert-primary{ background:#eef2ff; border-color:#dbe1ff; }
 
-/* Navbar (ya lo tienes) */
-.ist-navbar{ background:#3e1a66; }
+/* Panel derecho: Cuestionarios por área */
+#areasList .area-block{
+  border:1px solid #eee; border-radius:.75rem; padding:.75rem; background:#fff; margin-bottom:.75rem;
+}
+#areasList .area-head{
+  display:flex; justify-content:space-between; align-items:center; gap:.5rem;
+}
+.status-pill{
+  display:inline-flex; align-items:center; gap:.35rem; border-radius:999px; padding:.15rem .5rem; font-size:.75rem; font-weight:600;
+  border:1px solid transparent;
+}
+.status-vigente{ background:rgba(46,204,113,.12); color:var(--ok); border-color:rgba(46,204,113,.25); }
+.status-vencido{ background:rgba(231,76,60,.11); color:var(--risk); border-color:rgba(231,76,60,.25); }
+.status-proximo{ background:rgba(241,196,15,.12); color:var(--warn); border-color:rgba(241,196,15,.25); }
 
+#areasList .puesto-btn{
+  width:100%; text-align:left; background:#faf9ff; border:1px solid #eee; border-radius:.5rem; padding:.5rem .65rem;
+  display:flex; justify-content:space-between; align-items:center; gap:.5rem;
+}
+#areasList .puesto-btn:hover{ background:#f3f1ff; }
+#areasList .person-row{
+  display:flex; justify-content:space-between; align-items:center; padding:.35rem .25rem; border-bottom:1px dashed #eee; font-size:.95rem;
+}
+#areasList .person-row:last-child{ border-bottom:0; }
+
+/* Botones/tiles de hoja avanzada en detalle */
+.adv-tile{
+  display:flex; flex-direction:column; gap:.25rem; padding:.5rem .6rem; border:1px solid #eee; border-radius:.5rem; background:#fff;
+}
+.adv-tile .h-name{ font-weight:700; color:#333; }
+.adv-tile .h-sheet{ font-size:.8rem; color:var(--muted); }
+.adv-tile .h-metric{ font-size:.85rem; }
+.hl-ok   { background: linear-gradient(0deg, rgba(46,204,113,.06), rgba(46,204,113,.06)); border-color: rgba(46,204,113,.25); }
+.hl-warn { background: linear-gradient(0deg, rgba(241,196,15,.08), rgba(241,196,15,.08)); border-color: rgba(241,196,15,.25); }
+.hl-risk { background: linear-gradient(0deg, rgba(231,76,60,.08), rgba(231,76,60,.08)); border-color: rgba(231,76,60,.28); }
