@@ -4,18 +4,43 @@
     --muted:#8b86a3;
 }
 
+/* NAVBAR */
 .ist-navbar{ background: var(--ist-purple-dk); }
 .ist-navbar .navbar-brand{ display:inline-flex; align-items:center; gap:.5rem; padding:.25rem 0; }
 .ist-navbar .navbar-brand img{ height:36px; display:block; }
-.ist-navbar .nav-link{ color:#fff !important; }
-.ist-navbar .nav-link:hover{ color:#f2e9ff !important; }
 
-.table th, .table td{
-    vertical-align: middle;
+/* Pills de stats */
+.stat-pill{
+    display:inline-flex; align-items:center; gap:.4rem;
+    padding:.35rem .6rem; border-radius:.5rem;
 }
-.table td:nth-child(4), /* Nombre */
-.table td:nth-child(5){ /* Puesto */
-    max-width: 320px;
-    overflow-wrap:anywhere;
-    word-break:break-word;
+
+/* ===== VIEWPORT de la tabla ===== */
+.table-viewport{
+    /* El JS ajusta esta altura para que nunca tape filas */
+    max-height: 65vh;
+    overflow-y: auto;
+    overflow-x: auto;   /* permite scroll horizontal si hace falta */
+    border-radius: .5rem;
+}
+
+/* Header sticky ANCLADO al viewport, no al documento */
+.table-viewport thead th{
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #f8f9fa;            /* misma del .table-light */
+    box-shadow: 0 1px 0 #dee2e6, 0 2px 8px rgba(0,0,0,.04);
+}
+
+/* Ajustes visuales */
+.table > :not(caption) > * > *{
+    padding: .65rem .75rem;
+}
+.table-hover tbody tr:hover{ background: #f9f7ff; }
+
+.bottom-sticky{
+    position: sticky;
+    bottom: 0;     /* se queda visible al llegar al final de la página */
+    z-index: 2;
 }

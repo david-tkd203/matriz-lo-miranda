@@ -57,7 +57,7 @@
             </select>
           </div>
 
-          <!-- Filtro por factor y estado -->
+          <!-- Filtro por factor -->
           <div class="col-md-3">
             <label class="form-label fw-semibold"><i class="bi bi-exclamation-octagon"></i> Factor de riesgo</label>
             <select id="filterFactor" class="form-select">
@@ -72,7 +72,7 @@
               <button id="btnReset" class="btn btn-outline-secondary btn-sm" title="Limpiar filtros">
                 <i class="bi bi-arrow-counterclockwise"></i>
               </button>
-              <button id="btnReload" class="btn btn-outline-primary btn-sm" title="Recargar Excel">
+              <button id="btnReload" class="btn btn-outline-primary btn-sm" title="Recargar archivo">
                 <i class="bi bi-arrow-repeat"></i>
               </button>
             </div>
@@ -81,19 +81,52 @@
       </div>
     </div>
 
-    <!-- Layout dividido -->
+    <!-- Layout dividido: fichas (izquierda) + panel lateral (derecha) -->
     <div class="row g-3">
-      <!-- IZQUIERDA: Fichas de la matriz -->
+      <!-- IZQUIERDA -->
       <div class="col-lg-8">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div class="small text-muted">
-            <i class="bi bi-info-circle"></i> Mostrando <span id="countRows">0</span> fichas
+            <i class="bi bi-info-circle"></i> Mostrando <span id="countRows">0</span> fichas visibles
           </div>
         </div>
-        <div id="cardsWrap" class="row g-3"></div>
+
+        <!-- FICHAS: ahora siempre 1 por fila -->
+        <div id="cardsWrap" class="row g-3 row-cols-1"></div>
+
+        <!-- BOTTOM “HEADER” (STICKY) con paginación y por-página -->
+        <div class="bottom-sticky bg-white border rounded-3 p-2 mt-3 shadow-sm">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="small text-muted">
+              Total filtrado: <strong><span id="countRowsTotal">0</span></strong> ·
+              Página <span id="pageCur">1</span>/<span id="pageMax">1</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <label class="small me-1">Por página</label>
+              <select id="perPage" class="form-select form-select-sm w-auto">
+                <option>5</option>
+                <option selected>10</option>
+                <option>15</option>
+                <option>25</option>
+                <option>50</option>
+              </select>
+              <div class="btn-group btn-group-sm" role="group" aria-label="Paginación">
+                <button class="btn btn-outline-secondary" id="btnPrev" title="Anterior">
+                  <i class="bi bi-chevron-left"></i>
+                </button>
+                <button class="btn btn-outline-secondary" id="btnNext" title="Siguiente">
+                  <i class="bi bi-chevron-right"></i>
+                </button>
+              </div>
+              <button class="btn btn-outline-secondary btn-sm" id="btnTop" title="Ir arriba">
+                <i class="bi bi-arrow-up"></i>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- DERECHA: Cuestionarios por Área / Puesto / Persona (colapsables) -->
+      <!-- DERECHA -->
       <div class="col-lg-4">
         <div class="card shadow-sm border-0">
           <div class="card-body">
@@ -103,9 +136,8 @@
                 <i class="bi bi-list-ul"></i> Ver lista
               </a>
             </div>
-            <p class="text-muted small mb-2">
-              Estado: <span class="badge bg-success-subtle text-success border">Vigente</span>
-              <span class="badge bg-danger-subtle text-danger border">Vencido</span>
+            <p class="text-muted small mb-3">
+              Vigencia: verde (vigente, ≤ 365 días) · rojo (vencido, &gt; 365 días).
             </p>
             <div id="areasList"></div>
             <div id="areasEmpty" class="alert alert-warning small d-none mt-3">

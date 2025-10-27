@@ -16,75 +16,144 @@
       <img src="../static/img/logo_ist.png" alt="IST" height="36">
       <span class="fw-bold">Cuestionarios Respondidos</span>
     </a>
-    <div class="ms-auto d-flex align-items-center gap-2">
-      <a class="btn btn-outline-light btn-sm" href="responder_cuestionario.html">
-        <i class="bi bi-plus-circle"></i> Responder cuestionario
-      </a>
-      <a class="btn btn-outline-light btn-sm" href="inicial.html">
-        <i class="bi bi-table"></i> Matriz
-      </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div id="topbarNav" class="collapse navbar-collapse">
+      <div class="ms-auto d-flex align-items-center gap-2 py-2 py-lg-0">
+        <a class="btn btn-outline-light btn-sm" href="responder_cuestionario.html">
+          <i class="bi bi-plus-circle"></i> Responder cuestionario
+        </a>
+        <a class="btn btn-outline-light btn-sm" href="inicial.html">
+          <i class="bi bi-table"></i> Matriz
+        </a>
+      </div>
     </div>
   </div>
 </nav>
 
 <main class="py-4">
   <div class="container">
-    <!-- Mensajes de error / fallback -->
     <div id="loadError" class="d-none"></div>
 
-    <div class="card shadow-sm mb-3 border-0">
+    <!-- Filtros -->
+    <div id="filtersCard" class="card shadow-sm mb-3 border-0">
       <div class="card-body">
         <div class="row g-3 align-items-end">
-          <div class="col-md-3">
+          <div class="col-lg-3 col-md-6">
             <label class="form-label fw-semibold"><i class="bi bi-diagram-3"></i> Área</label>
             <select id="filterArea" class="form-select">
               <option value="">(Todas)</option>
             </select>
           </div>
-
-          <!-- NUEVO: Filtro Sexo -->
-          <div class="col-md-3">
+          <div class="col-lg-3 col-md-6">
             <label class="form-label fw-semibold"><i class="bi bi-gender-ambiguous"></i> Sexo</label>
             <select id="filterSexo" class="form-select">
               <option value="">(Todos)</option>
-              <!-- Se llenará dinámicamente para reflejar lo que venga en el Excel -->
             </select>
           </div>
-
-          <div class="col-md-4">
+          <div class="col-lg-3 col-md-6">
+            <label class="form-label fw-semibold"><i class="bi bi-activity"></i> Vigencia</label>
+            <select id="filterVigencia" class="form-select">
+              <option value="">(Todas)</option>
+              <option value="vigente">Vigentes (≤ 365 días)</option>
+              <option value="vencido">Vencidos (&gt; 365 días)</option>
+            </select>
+          </div>
+          <div class="col-lg-3 col-md-6">
             <label class="form-label fw-semibold"><i class="bi bi-search"></i> Buscar por nombre</label>
             <input id="filterName" class="form-control" placeholder="Ej: María, Juan...">
           </div>
+        </div>
 
-          <div class="col-md-2 text-end">
-            <a class="btn btn-outline-primary w-100" href="../source/respuestas_cuestionario.xlsx" download>
-              <i class="bi bi-download"></i> Excel
-            </a>
+        <hr class="my-3">
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div class="stats small">
+            <span class="stat-pill bg-light border">
+              <i class="bi bi-people"></i> Total: <strong id="statTotal">0</strong>
+            </span>
+            <span class="stat-pill bg-light border">
+              <i class="bi bi-check-circle text-success"></i> Vigentes: <strong id="statVig">0</strong>
+            </span>
+            <span class="stat-pill bg-light border">
+              <i class="bi bi-x-octagon text-danger"></i> Vencidos: <strong id="statVen">0</strong>
+            </span>
+          </div>
+          <div class="d-flex gap-2">
+            <button id="btnReset" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+            </button>
+            <button id="btnExport" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-download"></i> Exportar vista (CSV)
+            </button>
+            <label class="btn btn-outline-dark btn-sm mb-0" for="fileXlsx">
+              <i class="bi bi-file-earmark-spreadsheet"></i> Cargar Excel
+            </label>
+            <input id="fileXlsx" type="file" accept=".xlsx,.xls" class="d-none">
           </div>
         </div>
       </div>
     </div>
 
-    <div class="table-responsive">
+    <!-- VIEWPORT con scroll vertical propio -->
+    <div id="tableViewport" class="table-viewport">
       <table class="table table-hover align-middle bg-white shadow-sm">
         <thead class="table-light">
           <tr>
-            <th>ID</th>
-            <th>Fecha</th>
-            <th>Área</th>
-            <th>Nombre</th>
-            <th>Puesto</th>
-            <th>Sexo</th>
+            <th data-sort="ID">ID <i class="bi bi-arrow-down-up"></i></th>
+            <th data-sort="Fecha">Fecha <i class="bi bi-arrow-down-up"></i></th>
+            <th data-sort="Area">Área <i class="bi bi-arrow-down-up"></i></th>
+            <th data-sort="Nombre_Trabajador">Nombre <i class="bi bi-arrow-down-up"></i></th>
+            <th data-sort="Puesto_de_Trabajo">Puesto <i class="bi bi-arrow-down-up"></i></th>
+            <th data-sort="Sexo">Sexo <i class="bi bi-arrow-down-up"></i></th>
+            <th data-sort="Vigencia">Vigencia <i class="bi bi-arrow-down-up"></i></th>
             <th>Detalle</th>
           </tr>
         </thead>
         <tbody id="tblBody"></tbody>
       </table>
     </div>
+
+    <!-- Barra inferior (no interfiere con el header) -->
+    <div id="bottomBar" class="bottom-sticky bg-white border rounded-3 p-2 mt-3 shadow-sm">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="small text-muted">
+          Mostrando <span id="countRows">0</span> de <span id="countRowsTotal">0</span> registros
+          · Página <span id="pageCur">1</span>/<span id="pageMax">1</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <label class="small me-1">Por página</label>
+          <select id="perPage" class="form-select form-select-sm w-auto">
+            <option>10</option>
+            <option selected>25</option>
+            <option>50</option>
+            <option>100</option>
+          </select>
+          <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-outline-secondary" id="btnPrev" title="Anterior">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            <button class="btn btn-outline-secondary" id="btnNext" title="Siguiente">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+          <button class="btn btn-outline-secondary btn-sm" id="btnTop" title="Ir arriba">
+            <i class="bi bi-arrow-up"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </main>
 
-<!-- Ruta del Excel -->
+<footer class="py-4 border-top bg-white">
+  <div class="container text-center text-muted small">
+    <i class="bi bi-shield-check"></i> Instituto de Seguridad del Trabajo · VOTME
+  </div>
+</footer>
+
 <script>
   window.RESP_XLSX = "../source/respuestas_cuestionario.xlsx";
 </script>

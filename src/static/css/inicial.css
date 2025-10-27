@@ -3,175 +3,67 @@
   --ist-purple-dk:#3e1a66;
   --muted:#8b86a3;
   --chip-bg:#f7f2ff;
-
-  /* Estados */
-  --ok:#2ecc71;
-  --warn:#f1c40f;
-  --risk:#e74c3c;
-  --soft:#f4f2fb;
+  --border:#e8e6f2;
 }
 
-/* ===== NAVBAR ===== */
 .ist-navbar{ background: var(--ist-purple-dk); }
 .ist-navbar .navbar-brand{ display:inline-flex; align-items:center; gap:.5rem; padding:.25rem 0; }
 .ist-navbar .navbar-brand img{ height:36px; display:block; }
 .ist-navbar .nav-link{ color:#fff !important; }
 .ist-navbar .nav-link:hover{ color:#f2e9ff !important; }
 
-.small, .text-muted{ color:var(--muted) !important; }
+/* Fichas 1 por fila */
+#cardsWrap .col-12{ width: 100%; }
 
-/* ===== FICHAS (targets) ===== */
-.card-ficha{
-  border-left:5px solid var(--ist-purple);
-  transition: transform .12s ease, box-shadow .12s ease;
-  cursor:pointer;
-  overflow:hidden;             /* asegura que nada desborde visualmente */
-}
-.card-ficha .title{ color:var(--ist-purple); }
-.card-ficha:hover{ transform: translateY(-2px); box-shadow:0 8px 18px rgba(0,0,0,.12) !important; }
-.chip{
+/* Tarjeta */
+.card-ficha{ border-left:6px solid var(--ist-purple); }
+.card-ficha .title{ color:var(--ist-purple); margin-bottom:.25rem; }
+.card-ficha .chip{
   display:inline-block; font-size:.8rem; background:var(--chip-bg);
   color:var(--ist-purple); border-radius:16px; padding:.25rem .5rem; margin-right:.25rem;
 }
 
-/* ===== FACTORES dentro de la ficha ===== */
-/* Forzamos grid en el contenedor que genera el JS: <div class="d-flex flex-wrap gap-1 my-1"> */
-#cardsWrap .d-flex.flex-wrap.my-1{
-  display:grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));   /* responsive, tarjetas fluidas */
-  gap:.5rem .6rem !important;                                    /* separación consistente */
-  align-items:start;
-}
-
-/* Si prefieres, puedes añadir class="factors-wrap" al contenedor desde JS y usar esta regla: */
-.factors-wrap{
-  display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap:.5rem .6rem;
-  align-items:start;
-}
-
-/* Badges: permitir varias líneas, evitar desborde y mantener legibilidad */
-.card-ficha .badge{
-  display:flex;
-  align-items:flex-start;
-  gap:.35rem;
-  width:100%;                 /* que ocupen el ancho de la “columna” del grid */
-  padding:.45rem .55rem;
-  font-size:.78rem;
-  font-weight:600;
-  border-radius:.5rem;
-  white-space:normal;         /* rompe la restricción de Bootstrap */
-  word-break:break-word;
-  hyphens:auto;               /* cortes más naturales */
-  line-height:1.25;
-  box-sizing:border-box;
-}
-
-/* Colores de estado de factor (ya definidos) */
+/* Badges factores (mejor wrap) */
+.badges-wrap{ display:flex; flex-wrap:wrap; gap:.35rem .35rem; }
 .badge-yes{ background:#d1f7c4; color:#1d7a2e; }
 .badge-no { background:#ffe3e8; color:#b70a3c; }
 .badge-na { background:#eee;    color:#666; }
+.badge{ white-space:normal; }
 
-/* Ajustes responsivos para móviles: menos ancho mínimo si la pantalla es chica */
-@media (max-width: 420px){
-  #cardsWrap .d-flex.flex-wrap.my-1,
-  .factors-wrap{
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  }
-  .card-ficha .badge{ font-size:.76rem; padding:.4rem .5rem; }
-}
-
-/* ===== RESULTADOS ===== */
-.alert-success{ background:#eafaf0; border-color:#d8f5e3; }
-.alert-danger { background:#fdecea; border-color:#f7d4d0; }
-.alert-primary{ background:#eef2ff; border-color:#dbe1ff; }
-
-/* ===== OFFCANVAS (detalle) ===== */
+/* Offcanvas detalle */
 .offcanvas .pill{
   display:inline-flex; align-items:center; gap:.35rem;
-  background:var(--soft); border:1px solid #e8e6f2; color:#333; padding:.2rem .5rem; border-radius:999px; font-size:.8rem;
+  background:#f7f2ff; color:var(--ist-purple); border:1px solid var(--border);
+  border-radius:999px; padding:.25rem .6rem; font-size:.85rem;
 }
-.factor-row{
-  display:grid; grid-template-columns: 1fr auto; align-items:center;
-  gap:.5rem; padding:.4rem .6rem; border:1px solid #eee; border-radius:.5rem; margin:.35rem 0; background:#fff;
-}
-
-/* Tiles por factor relacionados con hojas avanzadas */
-.adv-tile{
-  display:flex; flex-direction:column; gap:.25rem; padding:.6rem .7rem;
-  border:1px solid #eee; border-radius:.5rem; background:#fff;
-}
-.adv-tile .h-name{ font-weight:700; color:#333; }
-.adv-tile .h-sheet{ font-size:.8rem; color:var(--muted); }
-.adv-tile .h-metric{ font-size:.85rem; }
-
-/* Destacados por severidad */
-.hl-ok   { background: linear-gradient(0deg, rgba(46,204,113,.06), rgba(46,204,113,.06)); border-color: rgba(46,204,113,.25); }
-.hl-warn { background: linear-gradient(0deg, rgba(241,196,15,.08), rgba(241,196,15,.08)); border-color: rgba(241,196,15,.25); }
-.hl-risk { background: linear-gradient(0deg, rgba(231,76,60,.08), rgba(231,76,60,.08)); border-color: rgba(231,76,60,.28); }
-
-.m-dot{ width:.6rem; height:.6rem; border-radius:50%; display:inline-block; }
-.m-ok   { background:var(--ok); }
-.m-warn { background:var(--warn); }
-.m-risk { background:var(--risk); }
-
-/* ===== PANEL DERECHO: Cuestionarios por área ===== */
-#areasList .area-block{
-  border:1px solid #eee; border-radius:.75rem; padding:.75rem; background:#fff; margin-bottom:.75rem;
-}
-#areasList .area-head{
-  display:flex; justify-content:space-between; align-items:center; gap:.5rem; flex-wrap:wrap;
-}
-.status-pill{
-  display:inline-flex; align-items:center; gap:.35rem; border-radius:999px; padding:.15rem .5rem; font-size:.75rem; font-weight:600;
-  border:1px solid transparent;
-}
-.status-vigente{ background:rgba(46,204,113,.12); color:var(--ok); border-color:rgba(46,204,113,.25); }
-.status-vencido{ background:rgba(231,76,60,.11); color:var(--risk); border-color:rgba(231,76,60,.25); }
-.status-proximo{ background:rgba(241,196,15,.12); color:var(--warn); border-color:rgba(241,196,15,.25); }
-
-#areasList .puesto-btn{
-  width:100%; text-align:left; background:#faf9ff; border:1px solid #eee; border-radius:.5rem; padding:.55rem .7rem;
-  display:flex; justify-content:space-between; align-items:center; gap:.5rem;
-}
-#areasList .puesto-btn:hover{ background:#f3f1ff; }
-#areasList .person-row{
-  display:flex; justify-content:space-between; align-items:center; padding:.4rem .25rem; border-bottom:1px dashed #eee; font-size:.95rem;
-}
-#areasList .person-row:last-child{ border-bottom:0; }
-
-/* ===== Ajustes varios ===== */
-@media (max-width: 575.98px){
-  .card-ficha .title{ font-size:1.05rem; }
-  .chip{ font-size:.78rem; }
-  .factor-row{ grid-template-columns: 1fr; }
-}
-
-/* ===== Panel derecho: Cuestionarios por Área ===== */
-.area-block + .area-block{ margin-top: 1rem; }
-
-.area-head h6{ color: var(--ist-purple); }
-.pill{
-  display:inline-block; min-width: 2rem; text-align:center;
-  padding:.15rem .5rem; border-radius: 999px; font-weight:600;
-  font-size:.75rem; border:1px solid transparent;
-}
-.pill-ok   { background:#e6f7ec; color:#1e7a39; border-color:#bfe7cc; }
-.pill-warn { background:#fff5d9; color:#8a6a00; border-color:#ffe39a; }
-.pill-bad  { background:#ffe3e6; color:#a1122a; border-color:#ffb8c1; }
-.pill-na   { background:#f1f1f5; color:#6b6b7a; border-color:#e2e2ea; }
-
-.person-item{
+.offcanvas .factor-row{
   display:flex; align-items:center; justify-content:space-between;
-  gap:.75rem; padding:.35rem .5rem; border-bottom:1px dashed #eee;
+  border-bottom:1px dashed var(--border); padding:.35rem 0;
 }
-.person-item:last-child{ border-bottom:0; }
-.person-main{ min-width:0; }
-.person-main .fw-semibold{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.person-meta{ white-space:nowrap; display:flex; flex-direction:column; align-items:flex-end; gap:.15rem; }
+.offcanvas .mmc-alert .pill.warn{
+  background:#fff4e5; color:#a35a00; border-color:#ffd9a8;
+}
 
-@media (max-width: 480px){
-  .person-item{ flex-direction:column; align-items:flex-start; }
-  .person-meta{ align-items:flex-start; }
+/* Bottom header sticky (anti scroll infinito) */
+.bottom-sticky{
+  position: sticky; bottom: 0; z-index: 5;
+}
+
+/* Panel lateral: lista por área (colapsables) */
+.area-item{ border:1px solid var(--border); border-radius:.5rem; margin-bottom:.5rem; }
+.area-item .area-header{
+  display:flex; align-items:center; justify-content:space-between;
+  background:#faf9ff; padding:.5rem .75rem; border-bottom:1px solid var(--border); cursor:pointer;
+}
+.area-item .badge-vig{ background:#d1f7c4; color:#1d7a2e; }
+.area-item .badge-ven{ background:#ffe3e8; color:#b70a3c; }
+.area-item .puesto{
+  border-bottom:1px dashed var(--border); padding:.4rem .75rem; display:flex; justify-content:space-between; align-items:center;
+}
+.area-item .puesto:last-child{ border-bottom:0; }
+.area-item .person{
+  padding:.25rem .75rem .5rem 2rem; display:flex; justify-content:space-between; align-items:center; font-size:.9rem;
+}
+.area-item .person .tag{
+  border-radius:999px; padding:.1rem .5rem; border:1px solid var(--border);
 }
