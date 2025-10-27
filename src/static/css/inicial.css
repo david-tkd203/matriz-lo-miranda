@@ -18,8 +18,8 @@
   --chip-br:#e9dcff;
 
   /* Acentos por factor */
-  --rep:#7c3aed;  /* Repetitivo */
-  --rep-bg:#f3e8ff;
+  --rep: #dc2626;  /* Repetitivo */
+  --rep-bg:#fee2e2;
 
   --post:#2563eb; /* Postura */
   --post-bg:#e8f0ff;
@@ -33,8 +33,9 @@
   --pcts:#db2777; /* Manejo de PCTS */
   --pcts-bg:#ffe6f1;
 
-  --vcc:#7c3aed;  /* Vibración CC (indigo) */
-  --vcc-bg:#efe6ff;
+  --vcc:#dc2626;
+  --vcc-bg:#fee2e2;
+
 
   --vhb:#0ea5e9;  /* Vibración mano-brazo (sky) */
   --vhb-bg:#e6f6ff;
@@ -111,7 +112,7 @@ body{background:var(--soft);color:var(--ink);}
 }
 
 /* Colores por factor */
-.f-rep{ --accent:var(--rep);  --bg:var(--rep-bg);  }
+.f-rep{ --accent:#dc2626; --bg:#fee2e2; }
 .f-post{--accent:var(--post); --bg:var(--post-bg); }
 .f-lev{ --accent:var(--lev);  --bg:var(--lev-bg);  }
 .f-push{--accent:var(--push); --bg:var(--push-bg); }
@@ -121,11 +122,13 @@ body{background:var(--soft);color:var(--ink);}
 
 /* Variantes SI/NO */
 .factor-chip.is-yes{
-  background:var(--bg);
-  border-color:color-mix(in oklab, var(--accent) 40%, white);
-  color:color-mix(in oklab, var(--accent) 85%, black);
+  background:#fee2e2;                /* fondo rojo claro */
+  border-color:#fecaca;
+  color:#991b1b;                     /* texto rojo oscuro */
 }
-.factor-chip.is-yes .state{ background:var(--accent); }
+.factor-chip.is-yes .state{
+  background:#dc2626;                /* círculo “S” rojo */
+}
 
 .factor-chip.is-no{
   background:#fff;
