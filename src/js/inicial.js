@@ -24,13 +24,13 @@ const COLS = {
 };
 
 const RISKS = [
-  { key: 'J', label: COLS.J, hoja: 'Mov. Rep.', css: 'f-rep' },
-  { key: 'K', label: COLS.K, hoja: 'Postura estatica', css: 'f-post' },
-  { key: 'L', label: COLS.L, hoja: 'f-lev' },
-  { key: 'M', label: COLS.M, hoja: 'f-push' },
-  { key: 'N', label: COLS.N, hoja: 'f-pcts' },
-  { key: 'O', label: COLS.O, hoja: 'f-vcc' },
-  { key: 'P', label: COLS.P, hoja: 'f-vhb' },
+  { key: 'J', label: COLS.J, css: 'f-rep' },
+  { key: 'K', label: COLS.K, css: 'f-post' },
+  { key: 'L', label: COLS.L, css: 'f-lev' },
+  { key: 'M', label: COLS.M, css: 'f-push' },
+  { key: 'N', label: COLS.N, css: 'f-pcts' },
+  { key: 'O', label: COLS.O, css: 'f-vcc' },
+  { key: 'P', label: COLS.P, css: 'f-vhb' },
 ];
 
 let RAW_ROWS = [];
@@ -58,6 +58,27 @@ function isZeroish(v){
 }
 function keyTriple(area, puesto, tarea){
   return `${toLowerNoAccents(area)}|${toLowerNoAccents(puesto)}|${toLowerNoAccents(tarea)}`;
+}
+function findIndexInsensitive(headers, keys){
+  const norm = headers.map(h => toLowerNoAccents(String(h||"")));
+  for(const k of keys){
+    const idx = norm.indexOf(toLowerNoAccents(k));
+    if(idx>=0) return idx;
+  }
+  return null;
+}
+function findHeaderIndex(headers, patterns){
+  const norm = headers.map(h => toLowerNoAccents(String(h||"")));
+  for (let i=0;i<norm.length;i++){
+    const h = norm[i];
+    if (patterns.some(p => h.includes(toLowerNoAccents(p)))) return i;
+  }
+  return null;
+}
+function objectFromRow(headers, row){
+  const o={};
+  headers.forEach((h,i)=>{ o[h||`Col${i+1}`] = row[i]??""; });
+  return o;
 }
 
 /* ======= Bootstrap ======= */
@@ -224,21 +245,27 @@ function processWorkbook(arrayBuffer){
     if(wsMov){
       const rows2d = XLSX.utils.sheet_to_json(wsMov, { header:1, defval:"" });
       if(rows2d.length){
-        const headers = rows2d[0].map(h => String(h||""));
+        // En esta hoja la **fila 2** contiene los nombres reales de las columnas
+        const headerRow =
+          (rows2d[1] && rows2d[1].some(x => String(x||"").trim() !== "")) ? rows2d[1] :
+          rows2d[0];
+        const headers = headerRow.map(h => String(h||""));
         MOVREP_HEADERS = headers;
 
-        const idxArea  = findIndexInsensitive(headers, ["area","área"]) ?? 1;
-        const idxPuesto= findIndexInsensitive(headers, ["puesto"]) ?? 2;
-        const idxTarea = findIndexInsensitive(headers, ["tarea","tareas"]) ?? 3;
+        // Índices de llaves (por texto y con fallback B,C,D)
+        const idxArea   = findHeaderIndex(headers, ["área de trabajo","area de trabajo","área","area"]) ?? 1;
+        const idxPuesto = findHeaderIndex(headers, ["puesto de trabajo","puesto"]) ?? 2;
+        const idxTarea  = findHeaderIndex(headers, ["tareas del puesto","tareas del puesto de trabajo","tarea"]) ?? 3;
 
-        const idxP = 16; // Columna P (0-based A=0)
-        const idxW = 22; // Columna W
+        // Detecta P y W por texto; fallback a índices correctos (A=0 → P=15, W=22)
+        const idxP = findHeaderIndex(headers, ["condición aceptable","condicion aceptable"]) ?? 15;
+        const idxW = findHeaderIndex(headers, ["condición crítica","condicion critica"]) ?? 22;
 
-        for(let i=1;i<rows2d.length;i++){
+        for(let i=2;i<rows2d.length;i++){ // datos desde fila 3 (0-based: 2)
           const r = rows2d[i] || [];
-          const area  = r[idxArea] ?? "";
-          const puesto= r[idxPuesto] ?? "";
-          const tarea = r[idxTarea] ?? "";
+          const area   = r[idxArea]   ?? "";
+          const puesto = r[idxPuesto] ?? "";
+          const tarea  = r[idxTarea]  ?? "";
           if(!(area||puesto||tarea)) continue;
           const k = keyTriple(area, puesto, tarea);
 
@@ -247,7 +274,7 @@ function processWorkbook(arrayBuffer){
             P: r[idxP] ?? "",
             W: r[idxW] ?? "",
             rowObj: rec,
-            rowArr: r.slice()  // ← guardamos array para poder filtrar por índice
+            rowArr: r.slice()
           };
         }
       }
@@ -258,20 +285,6 @@ function processWorkbook(arrayBuffer){
   populatePuesto(true);
   populateTarea(true);
   render();
-}
-
-function findIndexInsensitive(headers, keys){
-  const norm = headers.map(h => toLowerNoAccents(String(h||"")));
-  for(const k of keys){
-    const idx = norm.indexOf(toLowerNoAccents(k));
-    if(idx>=0) return idx;
-  }
-  return null;
-}
-function objectFromRow(headers, row){
-  const o={};
-  headers.forEach((h,i)=>{ o[h||`Col${i+1}`] = row[i]??""; });
-  return o;
 }
 
 /* ======= Filtros ======= */
@@ -331,7 +344,6 @@ function render(){
   const target = el("cardsWrap");
   const all = filteredRows();
 
-  // Paginación “slide”
   const per = STATE.perPage = parseInt(el("perPage").value,10) || 10;
   STATE.pageMax = Math.max(1, Math.ceil(all.length / per));
   if(STATE.page > STATE.pageMax) STATE.page = STATE.pageMax;
@@ -380,7 +392,7 @@ function factorChips(r){
   const parts = [];
   for(const rf of RISKS){
     const raw = (r[rf.key]||"").toString().trim().toUpperCase();
-    if(raw !== "SI" && raw !== "NO") continue; // sólo mostramos cuando hay dato claro
+    if(raw !== "SI" && raw !== "NO") continue;
     const isYes = raw === "SI";
     const cls = `factor-chip ${rf.css} ${isYes ? 'is-yes' : 'is-no'}`;
     const ico = isYes ? '<i class="bi bi-check-circle-fill"></i>' : '<i class="bi bi-dash-circle-fill"></i>';
@@ -451,15 +463,16 @@ function cardHtml(r, idx){
   `;
 }
 
-/* índices a ignorar en el modal: Col2..Col9 (1..8 en 0-based) */
+/* Ignorar en modal: Col2..Col9 (1..8 zero-based) y títulos */
 const SKIP_IDX = new Set([1,2,3,4,5,6,7,8]);
-const SKIP_LABELS = new Set(["mujeres","col2","col3","col4","col5","col6","col7","col8","col9"]);
+const SKIP_LABELS = new Set([
+  "mujeres","col2","col3","col4","col5","col6","col7","col8","col9","n°","n."
+]);
 
 function openDetail(r){
   const mov = getMovRepFor(r);
   const status = classifyMovRep(mov?.P, mov?.W);
 
-  // Bloque de estados P/W visible y resaltado cuando hay “No aceptable”
   const pText = String(mov?.P ?? "").trim();
   const wText = String(mov?.W ?? "").trim();
   const pBad  = /no acept|criti|alto/i.test(pText);
@@ -519,7 +532,6 @@ function openDetail(r){
         rows.push([label, val]);
       }
     }else{
-      // Fallback: usar el objeto clave->valor, filtrando por títulos a ignorar
       for(const [k,v] of Object.entries(mov.rowObj)){
         if(String(v ?? "").trim() === "") continue;
         if(SKIP_LABELS.has(toLowerNoAccents(k))) continue;
