@@ -305,6 +305,25 @@ function populatePuesto(){
   sel.innerHTML = `<option value="">(Todos)</option>` + opts.map(v => `<option>${escapeHtml(v)}</option>`).join("");
   sel.disabled = opts.length === 0;
 }
+
+function classifyRowHighlight(label, value){
+  const lab = toLowerNoAccents(String(label||""));
+  const val = toLowerNoAccents(String(value||""));
+
+  // Condición Aceptable: "Aceptable" => verde; "No aceptable" => rojo
+  if(lab.includes("condicion aceptable") || lab.includes("condición aceptable")){
+    if(val.includes("no acept")) return "is-aceptable-bad";
+    if(val.includes("acept"))    return "is-aceptable-ok";
+  }
+
+  // Condición Crítica: ambas variantes en amarillo (según tu instrucción)
+  if(lab.includes("condicion critica") || lab.includes("condición crítica")){
+    return "is-critica";
+  }
+  return "";
+}
+
+
 function populateTarea(){
   const sel = el("filterTarea");
   let list = RAW_ROWS;
@@ -429,15 +448,14 @@ function cardHtml(r, idx){
           <div class="mb-1"><i class="bi bi-person-badge"></i> <strong>Puesto:</strong> ${escapeHtml(r.C || "-")}</div>
           <div class="mb-2"><i class="bi bi-list-check"></i> <strong>Tareas:</strong> ${escapeHtml(r.D || "-")}</div>
 
-          <div class="d-flex flex-wrap align-items-center gap-2 mt-2 mb-2">
-            <span class="status-pill ${status.cls}" title="Estado según hoja Movimiento repetitivo (P/W)">
-              <i class="bi bi-activity"></i> Condición Aceptable: ${status.label}
-            </span>
-            ${mov ? `<span class="pill"><strong>Condición Crítica:</strong> ${escapeHtml(mov.W??"")}</span>`
-                 : `<span class="pill">Hoja Mov. repetitivo: sin coincidencia</span>`}
+          <!-- (1) MOVIDO ARRIBA: fila de horario/HE -->
+          <div class="row g-2 small mb-2">
+            <div class="col-6"><i class="bi bi-clock"></i> <strong>Horario:</strong> ${escapeHtml(r.E || "-")}</div>
+            <div class="col-6"><i class="bi bi-plus-circle"></i> <strong>HE/Día:</strong> ${escapeHtml(r.F || "0")}</div>
+            <div class="col-6"><i class="bi bi-plus-circle-dotted"></i> <strong>HE/Semana:</strong> ${escapeHtml(r.G || "0")}</div>
           </div>
 
-          <!-- FACTORES (J..P) -->
+          <!-- FACTORES (J..P) permanece en su bloque, bajo la fila anterior -->
           <div class="mb-2">
             <div class="small text-muted mb-1"><i class="bi bi-exclamation-octagon"></i> Identificación Inicial</div>
             <div class="factors-wrap">
@@ -446,10 +464,19 @@ function cardHtml(r, idx){
           </div>
 
           <hr>
-          <div class="row g-2 small">
-            <div class="col-6"><i class="bi bi-clock"></i> <strong>Horario:</strong> ${escapeHtml(r.E || "-")}</div>
-            <div class="col-6"><i class="bi bi-plus-circle"></i> <strong>HE/Día:</strong> ${escapeHtml(r.F || "0")}</div>
-            <div class="col-6"><i class="bi bi-plus-circle-dotted"></i> <strong>HE/Semana:</strong> ${escapeHtml(r.G || "0")}</div>
+
+          <!-- (2) MOVIDO ABAJO: bloque de estado P/W + títulos solicitados -->
+          <div class="d-flex flex-wrap align-items-center gap-2 mt-2 mb-2">
+            <div class="w-100 small text-muted">
+              IDENTIFICACIÓN AVANZADA – Trabajo Repetitivo de Miembros Superiores
+            </div>
+            <span class="status-pill ${status.cls}" title="Estado según hoja Movimiento repetitivo (P/W)">
+              <i class="bi bi-activity"></i> Condición Aceptable: ${status.label}
+            </span>
+
+
+            ${mov ? `<span class="pill"><strong>Condición Crítica:</strong> ${escapeHtml(mov.W??"")}</span>`
+                 : `<span class="pill">Hoja Mov. repetitivo: sin coincidencia</span>`}
           </div>
 
           <div class="d-flex justify-content-end mt-3">
@@ -478,20 +505,11 @@ function openDetail(r){
   const pBad  = /no acept|criti|alto/i.test(pText);
   const wBad  = /no acept|criti|alto/i.test(wText);
 
+
+
   const statesBlock = `
     <div class="row g-3 mb-3">
-      <div class="col-md-6">
-        <div class="state-card ${pBad ? 'hl-risk' : 'hl-ok'}">
-          <div class="sc-head"><i class="bi bi-check2-circle"></i> Condición Aceptable (P)</div>
-          <div class="sc-body">${escapeHtml(pText || '—')}</div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="state-card ${wBad ? 'hl-risk' : 'hl-warn'}">
-          <div class="sc-head"><i class="bi bi-exclamation-octagon"></i> Condición Crítica (W)</div>
-          <div class="sc-body">${escapeHtml(wText || '—')}</div>
-        </div>
-      </div>
+
     </div>
   `;
 
@@ -540,10 +558,12 @@ function openDetail(r){
     }
 
     const headHtml = `<thead><tr><th style="min-width:260px">Pregunta</th><th>Respuesta</th></tr></thead>`;
-    const bodyHtml = `<tbody>${rows.map(([k,v]) => `
-        <tr><th>${escapeHtml(k)}</th><td>${escapeHtml(String(v))}</td></tr>
-      `).join("")}</tbody>`;
-
+    const bodyHtml = `<tbody>${
+      rows.map(([k,v]) => {
+        const rowCls = classifyRowHighlight(k, v);
+        return `<tr class="${rowCls}"><th>${escapeHtml(k)}</th><td>${escapeHtml(String(v))}</td></tr>`;
+      }).join("")
+    }</tbody>`;
     qa = `
       <div class="table-like">
         <table>${headHtml}${bodyHtml}</table>
