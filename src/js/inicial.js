@@ -437,8 +437,8 @@ function cardHtml(r, idx){
         <div class="card-body">
           <div class="d-flex align-items-start justify-content-between">
             <div>
-              <div class="small text-muted mb-1">Área</div>
-              <h5 class="title mb-2">${escapeHtml(r.B || "-")}</h5>
+              <div class="small text-muted mb-1">Tarea</div>
+              <h5 class="title mb-2">${escapeHtml(r.D || "-")}</h5>
             </div>
             <div class="text-end">
               <span class="chip"><i class="bi bi-people"></i> H ${escapeHtml(r.H||"0")} · M ${escapeHtml(r.I||"0")}</span>
@@ -446,16 +446,16 @@ function cardHtml(r, idx){
           </div>
 
           <div class="mb-1"><i class="bi bi-person-badge"></i> <strong>Puesto:</strong> ${escapeHtml(r.C || "-")}</div>
-          <div class="mb-2"><i class="bi bi-list-check"></i> <strong>Tareas:</strong> ${escapeHtml(r.D || "-")}</div>
+          <div class="mb-2"><i class="bi bi-geo-alt"></i> <strong>Área:</strong> ${escapeHtml(r.B || "-")}</div>
 
-          <!-- (1) MOVIDO ARRIBA: fila de horario/HE -->
+          <!-- (1) Fila de horario/HE -->
           <div class="row g-2 small mb-2">
             <div class="col-6"><i class="bi bi-clock"></i> <strong>Horario:</strong> ${escapeHtml(r.E || "-")}</div>
             <div class="col-6"><i class="bi bi-plus-circle"></i> <strong>HE/Día:</strong> ${escapeHtml(r.F || "0")}</div>
             <div class="col-6"><i class="bi bi-plus-circle-dotted"></i> <strong>HE/Semana:</strong> ${escapeHtml(r.G || "0")}</div>
           </div>
 
-          <!-- FACTORES (J..P) permanece en su bloque, bajo la fila anterior -->
+          <!-- FACTORES (J..P) -->
           <div class="mb-2">
             <div class="small text-muted mb-1"><i class="bi bi-exclamation-octagon"></i> Identificación Inicial</div>
             <div class="factors-wrap">
@@ -465,7 +465,7 @@ function cardHtml(r, idx){
 
           <hr>
 
-          <!-- (2) MOVIDO ABAJO: bloque de estado P/W + títulos solicitados -->
+          <!-- Estado P/W -->
           <div class="d-flex flex-wrap align-items-center gap-2 mt-2 mb-2">
             <div class="w-100 small text-muted">
               IDENTIFICACIÓN AVANZADA – Trabajo Repetitivo de Miembros Superiores
@@ -473,8 +473,6 @@ function cardHtml(r, idx){
             <span class="status-pill ${status.cls}" title="Estado según hoja Movimiento repetitivo (P/W)">
               <i class="bi bi-activity"></i> Condición Aceptable: ${status.label}
             </span>
-
-
             ${mov ? `<span class="pill"><strong>Condición Crítica:</strong> ${escapeHtml(mov.W??"")}</span>`
                  : `<span class="pill">Hoja Mov. repetitivo: sin coincidencia</span>`}
           </div>
@@ -517,10 +515,10 @@ function openDetail(r){
     <div class="detail-card mb-3">
       <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
         <div>
-          <div class="small text-muted">Área</div>
-          <h5 class="mb-1">${escapeHtml(r.B || "-")}</h5>
+          <div class="small text-muted">Tarea</div>
+          <h5 class="mb-1">${escapeHtml(r.D || "-")}</h5>
           <div class="mb-1"><i class="bi bi-person-badge"></i> <strong>Puesto:</strong> ${escapeHtml(r.C || "-")}</div>
-          <div class="mb-1"><i class="bi bi-list-check"></i> <strong>Tareas:</strong> ${escapeHtml(r.D || "-")}</div>
+          <div class="mb-1"><i class="bi bi-geo-alt"></i> <strong>Área:</strong> ${escapeHtml(r.B || "-")}</div>
         </div>
         <div class="d-flex flex-column align-items-end gap-2">
           <span class="status-pill ${status.cls}" style="font-size:1rem;">
